@@ -104,13 +104,13 @@ async function run() {
     const verifyAdmin = async(req, res, next) => {
       const decodedEmail = req.data;
       const email = decodedEmail;
-      console.log(email)
+      // console.log(email)
       const query = { email: email}
       const user = await userCollection.findOne(query);
       if(user?.role !== 'admin'){
         return res.status(403).send({error: true, message: 'forbidden message'});
       }
-      
+
       next();
     }
     
