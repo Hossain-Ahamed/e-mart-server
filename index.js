@@ -66,15 +66,6 @@ async function run() {
     const beautyCategoryCollection = client.db('e-mart').collection('beautyCategory');
     const cartCollection = client.db('e-mart').collection('carts');
 
-    // app.post('/jwt', (req, res) => {
-    //   const user = req.body;
-    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-    //     expiresIn: '1h'
-    //   })
-
-    //   res.send({ token })
-    // })
-
     app.post('/jwt', (req, res) => {
       const user = req.body;
       const token = jwt.sign({ email: user.email }, process.env.ACCESS_TOKEN_SECRET);
@@ -225,78 +216,9 @@ async function run() {
       }
     })
 
-    // app.patch('/categories/:slug', verifyJWT, verifyAdmin, async (req, res) => {
-    //   const categorySlugToUpdate = req.params.slug;
-    //   const { topBannerImage, secondBannerImage } = req.body; // Include secondBannerImage from the request body
-    
-    //   try {
-    //     // Check if the provided slug exists in the collection
-    //     const existingCategory = await categoryCollection.findOne({ slug: categorySlugToUpdate });
-    //     if (!existingCategory) {
-    //       return res.status(404).json({ message: 'Category not found.' });
-    //     }
-    
-    //     // Prepare the fields to update (both topBannerImage and secondBannerImage)
-    //     const updateFields = [];
-    //     if (topBannerImage) {
-    //       // Check if the existing category has a topBannerImage array, if not, initialize it as an empty array
-    //   updateFields.topBannerImage = existingCategory.topBannerImage ? [...existingCategory.topBannerImage, topBannerImage] : [topBannerImage];
-    // }
-    //     if (secondBannerImage) {
-    //       updateFields.secondBannerImage = secondBannerImage;
-    //     }
-    
-    //     // Update the existing document with the new fields
-    //     const result = await categoryCollection.updateOne(
-    //       { slug: categorySlugToUpdate },
-    //       { $set: updateFields }
-    //     );
-    //     console.log(result, "Top");
-    
-    //     res.json({ message: 'Category updated successfully.', result });
-    //   } catch (error) {
-    //     console.error('Error updating category:', error);
-    //     res.status(500).json({ message: 'Error updating category.' });
-    //   }
-    // });
-
-    // app.patch('/categories/:slug', verifyJWT, verifyAdmin, async (req, res) => {
-    //   const categorySlugToUpdate = req.params.slug;
-    //   const { topBannerImage, secondBannerImage } = req.body;
-      
-    //   try {
-    //     // Check if the provided slug exists in the collection
-    //     const existingCategory = await categoryCollection.findOne({ slug: categorySlugToUpdate });
-    //     if (!existingCategory) {
-    //       return res.status(404).json({ message: 'Category not found.' });
-    //     }
-        
-    //     // Prepare the fields to update (both topBannerImage and secondBannerImage)
-    //     const updateFields = {};
-    //     if (topBannerImage) {
-    //       // Use the $push operator to append the new image to the existing array
-    //       updateFields.$push = { topBannerImage };
-    //     }
-    //     if (secondBannerImage) {
-    //       updateFields.secondBannerImage = secondBannerImage;
-    //     }
-        
-    //     // Update the existing document with the new fields
-    //     const result = await categoryCollection.updateOne(
-    //       { slug: categorySlugToUpdate },
-    //       updateFields
-    //     );
-        
-    //     res.json({ message: 'Category updated successfully.', result });
-    //   } catch (error) {
-    //     console.error('Error updating category:', error);
-    //     res.status(500).json({ message: 'Error updating category.' });
-    //   }
-    // });    
-
-    app.patch('/categories/:slug', verifyJWT, verifyAdmin, async (req, res) => {
+    app.patch('/upload-category/:slug', verifyJWT, verifyAdmin, async (req, res) => {
       const categorySlugToUpdate = req.params.slug;
-      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage} = req.body;
+      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage, bottomBannerImage} = req.body;
       
       try {
         // Prepare the fields to update (both topBannerImage and secondBannerImage)
@@ -317,6 +239,9 @@ async function run() {
         }
         if (slimBannerImage) {
     updateFields.$push = {slimBannerImage};
+        }
+        if (bottomBannerImage) {
+    updateFields.$push = {bottomBannerImage};
         }
         
         // Update the category document that matches the slug
@@ -359,75 +284,29 @@ async function run() {
         res.status(500).json({ message: 'Error updating category layout.' });
       }
     });
-    
-
-
-    // app.patch('/categories/:slug/layout', verifyJWT, verifyAdmin, async (req, res) => {
-    //   const categorySlugToUpdate = req.params.slug;
-    //   const { layout } = req.body;
-    
-    //   try {
-    //     // Update the 'layout' field for the category that matches the slug
-    //     const result = await categoryCollection.updateOne(
-    //       { slug: categorySlugToUpdate },
-    //       { $set: { layout: layout } }
-    //     );
-    
-    //     if (result.matchedCount === 0) {
-    //       return res.status(404).json({ message: 'Category not found.' });
-    //     }
-    
-    //     res.json({ message: 'Category layout updated successfully.', result });
-    //   } catch (error) {
-    //     console.error('Error updating category layout:', error);
-    //     res.status(500).json({ message: 'Error updating category layout.' });
-    //   }
-    // });
-    
-
-    // app.patch('/categories/:slug', verifyJWT, verifyAdmin, async (req, res) => {
-    //   const categorySlugToUpdate = req.params.slug;
-    //   const { topBannerImage, secondBannerImage, layout } = req.body; // Add 'layout' to the destructuring
-    
-    //   try {
-    //     // Prepare the fields to update (topBannerImage, secondBannerImage, and layout)
-    //     const updateFields = {};
-    //     if (topBannerImage) {
-    //       // Use the $push operator to append the new image to the existing array
-    //       updateFields.$push = { topBannerImage };
-    //     }
-    //     if (secondBannerImage) {
-    //       updateFields.secondBannerImage = secondBannerImage;
-    //     }
-    //     if (layout) {
-    //       updateFields.layout = layout; // Set the 'layout' field
-    //     }
-    
-    //     // Update the category document that matches the slug
-    //     const result = await categoryCollection.updateOne(
-    //       { slug: categorySlugToUpdate },
-    //       updateFields
-    //     );
-    // console.log(result);
-    //     if (result.matchedCount === 0) {
-    //       return res.status(404).json({ message: 'Category not found.' });
-    //     }
-    
-    //     res.json({ message: 'Category updated successfully.', result });
-      
-    //     console.log(result)
-    //   } catch (error) {
-    //     console.error('Error updating category:', error);
-    //     res.status(500).json({ message: 'Error updating category.' });
-    //   }
-    // });
-    
-    
-    
-    
-    
 
     app.get('/upload-category/:slug/upload-top-banner', async (req, res) => {
+      try {
+        const categorySlugToRetrieve = req.params.slug;
+        console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
+    
+        const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
+    
+        console.log('category:', category);
+    
+        if (!category) {
+          return res.status(404).json({ message: 'Category not found.' });
+        }
+    
+        res.status(200).send(category);
+      } catch (error) {
+        console.error('Error retrieving category:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+      }
+    });
+
+
+    app.get('/upload-category/:slug/upload-second-banner', async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
@@ -490,6 +369,26 @@ async function run() {
 
 
     app.get('/upload-category/:slug/upload-slim-banner', async (req, res) => {
+      try {
+        const categorySlugToRetrieve = req.params.slug;
+        console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
+    
+        const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
+    
+        console.log('category:', category);
+    
+        if (!category) {
+          return res.status(404).json({ message: 'Category not found.' });
+        }
+    
+        res.status(200).send(category);
+      } catch (error) {
+        console.error('Error retrieving category:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+      }
+    });
+
+    app.get('/upload-category/:slug/upload-bottom-banner', async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
