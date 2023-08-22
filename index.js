@@ -218,7 +218,7 @@ async function run() {
 
     app.patch('/upload-category/:slug', verifyJWT, verifyAdmin, async (req, res) => {
       const categorySlugToUpdate = req.params.slug;
-      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage, bottomBannerImage} = req.body;
+      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage, headingsSlim, titleSlim, offerSlim, bottomBannerImage} = req.body;
       
       try {
         // Prepare the fields to update (both topBannerImage and secondBannerImage)
@@ -237,8 +237,8 @@ async function run() {
         if (topLeftBannerLayout2) {
     updateFields.$push = {topLeftBannerLayout2};
         }
-        if (slimBannerImage) {
-    updateFields.$push = {slimBannerImage};
+        if (slimBannerImage, headingsSlim, titleSlim, offerSlim) {
+    updateFields.$push = {slimBannerImage, headingsSlim, titleSlim, offerSlim};
         }
         if (bottomBannerImage) {
     updateFields.$push = {bottomBannerImage};
