@@ -1,9 +1,9 @@
-const express = require ('express');
-const cors = require ('cors');
+const express = require('express');
+const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
-const cookieParser = require ('cookie-parser');
+const cookieParser = require('cookie-parser');
 
 
 const app = express();
@@ -18,7 +18,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', corsOptions.origin);
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Credentials', 'true');
-  next();
+  next();
 });
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -69,49 +69,49 @@ async function run() {
     app.post('/jwt', (req, res) => {
       const user = req.body;
       const token = jwt.sign({ email: user.email }, process.env.ACCESS_TOKEN_SECRET);
-    
+
       res.cookie("_et", token, { httpOnly: true, secure: true, sameSite: 'none' }); // Sending the token as a cookie (secure and httponly)
       res.send({ token });
     });
 
-    app.delete('/jwt', async(req, res) => {
-      try{
-      
-      const _et = req.cookies._et;
-      // console.log(_et)
-      
-      res.clearCookie("_et");
-      // console.log(3)
-      res.status(200).send(true)
+    app.delete('/jwt', async (req, res) => {
+      try {
+
+        const _et = req.cookies._et;
+        // console.log(_et)
+
+        res.clearCookie("_et");
+        // console.log(3)
+        res.status(200).send(true)
       }
-      catch{
-        e=>{
-          res.status(500).send({ message: 'Internal server error'})
+      catch {
+        e => {
+          res.status(500).send({ message: 'Internal server error' })
         }
       }
-      
+
     })
 
-    const verifyAdmin = async(req, res, next) => {
+    const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.data;
       const email = decodedEmail;
       // console.log(email)
-      const query = { email: email}
+      const query = { email: email }
       const user = await userCollection.findOne(query);
-      if(user?.role !== 'admin'){
-        return res.status(403).send({error: true, message: 'forbidden message'});
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
       }
 
       next();
     }
-    
+
 
     app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
-    
-    app.post('/users', async(req, res) => {
+
+    app.post('/users', async (req, res) => {
       const user = req.body;
       console.log(user)
       const query = { email: user.email }
@@ -127,7 +127,7 @@ async function run() {
     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
       const decodedEmail = req.data;
-      if(decodedEmail !== email) {
+      if (decodedEmail !== email) {
         res.send({ admin: false })
       }
 
@@ -151,12 +151,12 @@ async function run() {
       res.send(result);
     })
 
-    app.get('/products', async(req, res) =>{
-        const query = {}
-        const cursor = productsCollection.find(query);
-        const products = await cursor.toArray();
-        res.send(products);
-    } )
+    app.get('/products', async (req, res) => {
+      const query = {}
+      const cursor = productsCollection.find(query);
+      const products = await cursor.toArray();
+      res.send(products);
+    })
 
     app.get('/products/:id', async (req, res) => {
       const id = req.params.id;
@@ -173,19 +173,19 @@ async function run() {
       }
     });
 
-    app.post('/products', verifyJWT, verifyAdmin, async(req, res) => {
+    app.post('/products', verifyJWT, verifyAdmin, async (req, res) => {
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct);
       res.send(result);
     })
-    
 
-    app.get('/categories', async(req, res) =>{
-        const query = {}
-        const cursor = categoryCollection.find(query);
-        const categories = await cursor.toArray();
-        res.send(categories);
-    } )
+
+    app.get('/categories', async (req, res) => {
+      const query = {}
+      const cursor = categoryCollection.find(query);
+      const categories = await cursor.toArray();
+      res.send(categories);
+    })
 
     app.get('/categories/:id', async (req, res) => {
       const id = req.params.id;
@@ -202,14 +202,14 @@ async function run() {
       }
     });
 
-    app.post('/categories', verifyJWT, verifyAdmin, async(req, res) => {
+    app.post('/categories', verifyJWT, verifyAdmin, async (req, res) => {
       const newCategory = req.body;
       console.log(newCategory, "new")
-      const exist = await categoryCollection.findOne({slug: newCategory?.slug});
-      if(exist){
-        res.status(409).send({message: "Category Name already existed"})
+      const exist = await categoryCollection.findOne({ slug: newCategory?.slug });
+      if (exist) {
+        res.status(409).send({ message: "Category Name already existed" })
       }
-      else{
+      else {
 
         const result = await categoryCollection.insertOne(newCategory);
         res.status(200).send(result);
@@ -218,42 +218,42 @@ async function run() {
 
     app.patch('/upload-category/:slug', verifyJWT, verifyAdmin, async (req, res) => {
       const categorySlugToUpdate = req.params.slug;
-      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage, headingsSlim, titleSlim, offerSlim, bottomBannerImage} = req.body;
-      
+      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage, headingsSlim, titleSlim, offerSlim, bottomBannerImage } = req.body;
+
       try {
         // Prepare the fields to update (both topBannerImage and secondBannerImage)
         const updateFields = {};
-        
+
         if (topBannerImage) {
           // Use the $push operator to append the new image to the existing array
           updateFields.$push = { topBannerImage };
         }
         if (secondBannerImage) {
-          updateFields.$push = {secondBannerImage};
+          updateFields.$push = { secondBannerImage };
         }
         if (topRightBannerLayout2) {
-    updateFields.$push = {topRightBannerLayout2};
+          updateFields.$push = { topRightBannerLayout2 };
         }
         if (topLeftBannerLayout2) {
-    updateFields.$push = {topLeftBannerLayout2};
+          updateFields.$push = { topLeftBannerLayout2 };
         }
         if (slimBannerImage, headingsSlim, titleSlim, offerSlim) {
-    updateFields.$push = {slimBannerImage, headingsSlim, titleSlim, offerSlim};
+          updateFields.$push = { slimBannerImage, headingsSlim, titleSlim, offerSlim };
         }
         if (bottomBannerImage) {
-    updateFields.$push = {bottomBannerImage};
+          updateFields.$push = { bottomBannerImage };
         }
-        
+
         // Update the category document that matches the slug
         const result = await categoryCollection.updateOne(
           { slug: categorySlugToUpdate },
           updateFields
         );
-        
+
         if (result.matchedCount === 0) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.json({ message: 'Category updated successfully.', result });
       } catch (error) {
         console.error('Error updating category:', error);
@@ -265,7 +265,7 @@ async function run() {
       const categorySlugToUpdate = req.params.slug;
       console.log(req.params);
       const { layout } = req.body;
-    
+
       try {
         // Update the 'layout' field for the category that matches the slug
         const result = await categoryCollection.updateOne(
@@ -273,12 +273,12 @@ async function run() {
           { $set: { layout: layout } }
         );
         console.log(result);
-    
+
         if (result.matchedCount === 0) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
-        return res.json({ message: 'Category layout updated successfully.', category:result });
+
+        return res.json({ message: 'Category layout updated successfully.', category: result });
       } catch (error) {
         console.error('Error updating category layout:', error);
         res.status(500).json({ message: 'Error updating category layout.' });
@@ -289,15 +289,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -310,15 +310,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -331,15 +331,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -351,15 +351,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -372,15 +372,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -392,15 +392,15 @@ async function run() {
       try {
         const categorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', categorySlugToRetrieve);
-    
+
         const category = await categoryCollection.findOne({ slug: categorySlugToRetrieve });
-    
+
         console.log('category:', category);
-    
+
         if (!category) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
+
         res.status(200).send(category);
       } catch (error) {
         console.error('Error retrieving category:', error);
@@ -408,21 +408,21 @@ async function run() {
       }
     });
 
-    app.get('/sub-category', async(req, res) =>{
+    app.get('/sub-category', async (req, res) => {
       const query = {}
       const cursor = subCategoryCollection.find(query);
       const subCategory = await cursor.toArray();
       res.send(subCategory);
-  } )
+    })
 
-    app.post('/upload-sub-category', verifyJWT, verifyAdmin, async(req, res) => {
+    app.post('/upload-sub-category', verifyJWT, verifyAdmin, async (req, res) => {
       const newSubCategory = req.body;
       console.log(newSubCategory, "new")
-      const exist = await subCategoryCollection.findOne({slug: newSubCategory?.slug});
-      if(exist){
-        res.status(409).send({message: "Sub Category Name already existed"})
+      const exist = await subCategoryCollection.findOne({ slug: newSubCategory?.slug });
+      if (exist) {
+        res.status(409).send({ message: "Sub Category Name already existed" })
       }
-      else{
+      else {
 
         const result = await subCategoryCollection.insertOne(newSubCategory);
         res.status(200).send(result);
@@ -433,7 +433,7 @@ async function run() {
       const subCategorySlugToUpdate = req.params.slug;
       console.log(req.params);
       const { layout } = req.body;
-    
+
       try {
         // Update the 'layout' field for the category that matches the slug
         const result = await subCategoryCollection.updateOne(
@@ -441,12 +441,12 @@ async function run() {
           { $set: { layout: layout } }
         );
         console.log(result);
-    
+
         if (result.matchedCount === 0) {
           return res.status(404).json({ message: 'Category not found.' });
         }
-    
-        return res.json({ message: 'Category layout updated successfully.', category:result });
+
+        return res.json({ message: 'Category layout updated successfully.', category: result });
       } catch (error) {
         console.error('Error updating category layout:', error);
         res.status(500).json({ message: 'Error updating category layout.' });
@@ -455,39 +455,39 @@ async function run() {
 
     app.patch('/upload-sub-category/:slug', verifyJWT, verifyAdmin, async (req, res) => {
       const subCategorySlugToUpdate = req.params.slug;
-      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage} = req.body;
-      
+      const { topBannerImage, secondBannerImage, topRightBannerLayout2, topLeftBannerLayout2, slimBannerImage } = req.body;
+
       try {
         // Prepare the fields to update (both topBannerImage and secondBannerImage)
         const updateFields = {};
-        
+
         if (topBannerImage) {
           // Use the $push operator to append the new image to the existing array
           updateFields.$push = { topBannerImage };
         }
         if (secondBannerImage) {
-          updateFields.$push = {secondBannerImage};
+          updateFields.$push = { secondBannerImage };
         }
         if (topRightBannerLayout2) {
-    updateFields.$push = {topRightBannerLayout2};
+          updateFields.$push = { topRightBannerLayout2 };
         }
         if (topLeftBannerLayout2) {
-    updateFields.$push = {topLeftBannerLayout2};
+          updateFields.$push = { topLeftBannerLayout2 };
         }
         if (slimBannerImage) {
-    updateFields.$push = {slimBannerImage};
+          updateFields.$push = { slimBannerImage };
         }
-        
+
         // Update the category document that matches the slug
         const result = await subCategoryCollection.updateOne(
           { slug: subCategorySlugToUpdate },
           updateFields
         );
-        
+
         if (result.matchedCount === 0) {
           return res.status(404).json({ message: 'subCategory not found.' });
         }
-    
+
         res.json({ message: 'subCategory updated successfully.', result });
       } catch (error) {
         console.error('Error updating subcategory:', error);
@@ -499,15 +499,15 @@ async function run() {
       try {
         const subCategorySlugToRetrieve = req.params.slug;
         console.log('subcategorySlugToRetrieve:', subCategorySlugToRetrieve);
-    
+
         const subCategory = await subCategoryCollection.findOne({ slug: subCategorySlugToRetrieve });
-    
+
         console.log('subcategory:', subCategory);
-    
+
         if (!subCategory) {
           return res.status(404).json({ message: 'subCategory not found.' });
         }
-    
+
         res.status(200).send(subCategory);
       } catch (error) {
         console.error('Error retrieving subcategory:', error);
@@ -519,15 +519,15 @@ async function run() {
       try {
         const subCategorySlugToRetrieve = req.params.slug;
         console.log('subCategorySlugToRetrieve:', subCategorySlugToRetrieve);
-    
+
         const subCategory = await subCategoryCollection.findOne({ slug: subCategorySlugToRetrieve });
-    
+
         console.log('subCategory:', subCategory);
-    
+
         if (!subCategory) {
           return res.status(404).json({ message: 'subCategory not found.' });
         }
-    
+
         res.status(200).send(subCategory);
       } catch (error) {
         console.error('Error retrieving subCategory:', error);
@@ -539,15 +539,15 @@ async function run() {
       try {
         const subCategorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', subCategorySlugToRetrieve);
-    
+
         const subCategory = await subCategoryCollection.findOne({ slug: subCategorySlugToRetrieve });
-    
+
         console.log('category:', subCategory);
-    
+
         if (!subCategory) {
           return res.status(404).json({ message: 'subCategory not found.' });
         }
-    
+
         res.status(200).send(subCategory);
       } catch (error) {
         console.error('Error retrieving subCategory:', error);
@@ -560,58 +560,58 @@ async function run() {
       try {
         const subCategorySlugToRetrieve = req.params.slug;
         console.log('categorySlugToRetrieve:', subCategorySlugToRetrieve);
-    
+
         const subCategory = await subCategoryCollection.findOne({ slug: subCategorySlugToRetrieve });
-    
+
         console.log('subCategory:', subCategory);
-    
+
         if (!subCategory) {
           return res.status(404).json({ message: 'subCategory not found.' });
         }
-    
+
         res.status(200).send(subCategory);
       } catch (error) {
         console.error('Error retrieving subCategory:', error);
         res.status(500).json({ message: 'Internal server error.' });
       }
     });
-    
-    
-    
-    
-    
 
-    app.get('/menCategory', async(req, res) =>{
-        const query = {}
-        const cursor = menCategoryCollection.find(query);
-        const menCategory = await cursor.toArray();
-        res.send(menCategory);
-    } )
 
-    app.get('/womenCategory', async(req, res) =>{
-        const query = {}
-        const cursor = womenCategoryCollection.find(query);
-        const womenCategory = await cursor.toArray();
-        res.send(womenCategory);
-    } )
 
-    app.get('/groceryCategory', async(req, res) =>{
-        const query = {}
-        const cursor = groceryCategoryCollection.find(query);
-        const groceryCategory = await cursor.toArray();
-        res.send(groceryCategory);
-    } )
 
-    app.get('/beautyCategory', async(req, res) =>{
-        const query = {}
-        const cursor = beautyCategoryCollection.find(query);
-        const beautyCategory = await cursor.toArray();
-        res.send(beautyCategory);
-    } )
+
+
+    app.get('/menCategory', async (req, res) => {
+      const query = {}
+      const cursor = menCategoryCollection.find(query);
+      const menCategory = await cursor.toArray();
+      res.send(menCategory);
+    })
+
+    app.get('/womenCategory', async (req, res) => {
+      const query = {}
+      const cursor = womenCategoryCollection.find(query);
+      const womenCategory = await cursor.toArray();
+      res.send(womenCategory);
+    })
+
+    app.get('/groceryCategory', async (req, res) => {
+      const query = {}
+      const cursor = groceryCategoryCollection.find(query);
+      const groceryCategory = await cursor.toArray();
+      res.send(groceryCategory);
+    })
+
+    app.get('/beautyCategory', async (req, res) => {
+      const query = {}
+      const cursor = beautyCategoryCollection.find(query);
+      const beautyCategory = await cursor.toArray();
+      res.send(beautyCategory);
+    })
 
     // app.get('/carts', async (req, res) => {
     //     const email = req.query.email;
-        
+
     //     if (!email) {
     //       res.send([]);
     //     }
@@ -620,36 +620,130 @@ async function run() {
     //     res.send(result);
     //   });
 
-    app.get('/carts', verifyJWT, async (req, res) => {
-      const email = req.query.email;
-      
-      if (!email) {
-        res.send([]);
-      }
+
+
+    /*
+       __________________________________ CART MANAGEMENT _________________________________
+    */
+
+    // app.get('/carts', verifyJWT, async (req, res) => {
+    //   const email = req.query.email;
+
+
+    //   if (!email) {
+    //     res.status(401).send([]);
+    //   }
+    //   const decodedEmail = req.data;
+    //   // console.log(req.data)
+    //   // console.log(5, decodedEmail)
+    //   if (email !== decodedEmail) {
+    //     return res.status(401).send({ error: true, message: 'unauthorized' })
+    //   }
+    //   const query = { email: email };
+    //   const result = await cartCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+
+    // Get user's cart with product details
+    app.get('/get-cart', verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
-      // console.log(req.data)
-      // console.log(5, decodedEmail)
-      if(email !== decodedEmail){
-        return res.status(401).send({ error: true, message: 'unauthorized'})
+      const email = req.query.email;
+
+      if (decodedEmail !== email) {
+        res.status(401).send({ message: 'unauathorized access from this email' });
       }
-        const query = { email: email };
-        const result = await cartCollection.find(query).toArray();
-        res.send(result);
+
+      try {
+        const cart = await cartCollection.findOne({ email });
+
+        const cartItemsWithDetails = await Promise.all(cart.cart.map(async item => {
+          const product = await productsCollection.findOne(
+            { _id: new ObjectId(item.productId) },
+            { projection: { name: 1, img: 1, mainPrice: 1, price: 1 } });
+
+
+          return {
+            _id: product?._id,
+            name: product?.name,
+            img: product?.img,
+            mainPrice: parseFloat(product?.mainPrice || 0),
+            price: parseFloat(product?.price || 0),
+            quantity: item?.quantity
+
+          };
+        }));
+
+        res.status(200).json({ cart: cartItemsWithDetails });
+      } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+      }
     });
+
+
+    // Add item to cart
+    app.post('/add-to-cart', verifyJWT, async (req, res) => {
+      const decodedEmail = req.data;
+      // console.log(decodedEmail);
+      const { email, productId, quantity } = req.body;
+
+      if (decodedEmail !== email) {
+        res.status(401).send({ message: 'unauathorized access from this email' });
+      }
+
+      try {
+        let cart = await cartCollection.findOne({ email });
+
+        if (!cart) {
+          cart = { email, cart: [] };
+        }
+
+        const existingItemIndex = cart.cart.findIndex(item => item.productId.toString() === productId);
+        if (existingItemIndex !== -1) {
+          cart.cart[existingItemIndex].quantity += quantity;
+        } else {
+          cart.cart.push({ productId, quantity });
+        }
+
+        await cartCollection.updateOne({ email }, { $set: cart }, { upsert: true });
+
+        res.status(201).json(cart);
+      } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+      }
+    });
+
+
+    // app.post('/carts', verifyJWT, async (req, res) => {
+    //   const decodedEmail = req.data;
+    //   console.log(decodedEmail)
+    //   const product = req.body;
+    //   const result = await cartCollection.insertOne(product);
+    //   res.send(result);
+    // })
+
+    app.delete('/remove-from-cart/:email/:productId', verifyJWT, async (req, res) => {
+      const { email, productId } = req.params;
+
+      const decodedEmail = req.data;
+      if (decodedEmail !== email) {
+        res.status(401).send({ message: 'unauathorized access from this email' });
+      }
+
+      try {
+        const result = await cartCollection.updateOne(
+          { email },
+          { $pull: { cart: { productId } } }
+        );
     
-      
-
-    app.post('/carts', async (req, res) => {
-        const product = req.body;
-        const result = await cartCollection.insertOne(product);
-        res.send(result);
-    })
-
-    app.delete('/carts/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await cartCollection.deleteOne(query);
-      res.send(result);
+        if (result.modifiedCount === 1) {
+          res.json({ message: 'Item removed from cart successfully' });
+        } else {
+          res.status(404).json({ error: 'Item not found in cart' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: 'An error occurred' });
+      }
     })
 
     app.delete('/products/:id', async (req, res) => {
@@ -665,18 +759,18 @@ async function run() {
       const result = await categoryCollection.deleteOne(query);
       res.send(result);
     })
-    
+
   } finally {
-    
+
   }
 }
 run().catch(err => console.error(err));
 
 
-app.get('/', (req, res) =>{
-    res.send('hello');
+app.get('/', (req, res) => {
+  res.send('hello');
 });
 
-app.listen(port, () =>{
-    console.log(`listening to port ${port}`);
+app.listen(port, () => {
+  console.log(`listening to port ${port}`);
 });
