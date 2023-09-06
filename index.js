@@ -57,6 +57,8 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const userCollection = client.db("e-mart").collection("users");
+    const profileCollection = client.db("e-mart").collection("profile");
+    const couponsCollection = client.db("e-mart").collection("coupons");
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
     const productsCollection = client.db("e-mart").collection("products");
@@ -163,6 +165,43 @@ async function run() {
       res.send(result);
     });
 
+
+    // ----------------------------------Upload Profile------------------------------
+
+    app.get('/get-profile/:email', async (req, res) => {
+      const email = req.params.email;
+  
+      // Get the user's profile based on their email
+      try {
+        const userProfile = await profileCollection.findOne({ email: email });
+  
+        if (userProfile) {
+          res.status(200).json(userProfile);
+        } else {
+          res.status(404).json({ message: 'User profile not found' });
+        }
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });  
+
+    app.post("/upload-profile", verifyJWT, async (req, res) => {
+      const newProfile = req.body;
+      console.log(newProfile, "new");
+      const exist = await profileCollection.findOne({
+        slug: newProfile?.slug,
+      });
+      if (exist) {
+        res.status(409).send({ message: "Category Name already existed" });
+      } else {
+        const result = await profileCollection.insertOne(newProfile);
+        res.status(200).send(result);
+      }
+    });
+
+    //----------------------------- Products ----------------------------------
+
     app.get("/products", async (req, res) => {
       const query = {};
       const cursor = productsCollection.find(query);
@@ -221,6 +260,26 @@ async function run() {
         res.status(500).json({ message: "Error updating product." });
       }
     });
+
+
+    //--------------------------------Coupon Code -----------------------------
+
+    app.post("/coupon", verifyJWT, async (req, res) => {
+      const newCoupon = req.body;
+      console.log(newCoupon, "new");
+      const exist = await couponsCollection.findOne({
+        slug: newCoupon?.slug,
+      });
+      if (exist) {
+        res.status(409).send({ message: "Coupon Code already existed" });
+      } else {
+        const result = await couponsCollection.insertOne(newCoupon);
+        res.status(200).send(result);
+      }
+    });
+
+
+    //------------------------------------- Categories ---------------------------
 
     app.get("/categories", async (req, res) => {
       const query = {};
