@@ -268,7 +268,7 @@ async function run() {
       const newCoupon = req.body;
       console.log(newCoupon, "new");
       const exist = await couponsCollection.findOne({
-        slug: newCoupon?.slug,
+        couponCode: newCoupon?.couponCode,
       });
       if (exist) {
         res.status(409).send({ message: "Coupon Code already existed" });
