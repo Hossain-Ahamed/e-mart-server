@@ -331,6 +331,13 @@ async function run() {
 
     //--------------------------------Coupon Code -----------------------------
 
+    app.get("/get-coupon", async (req, res) => {
+      const query = {};
+      const cursor = couponsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    
     app.post("/coupon", verifyJWT, async (req, res) => {
       const newCoupon = req.body;
       console.log(newCoupon, "new");
@@ -343,6 +350,13 @@ async function run() {
         const result = await couponsCollection.insertOne(newCoupon);
         res.status(200).send(result);
       }
+    });
+
+    app.delete("/delete-coupon/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await couponsCollection.deleteOne(query);
+      res.send(result);
     });
 
 
@@ -1073,6 +1087,8 @@ async function run() {
       const result = await categoryCollection.deleteOne(query);
       res.send(result);
     });
+
+
   } finally {
   }
 }
