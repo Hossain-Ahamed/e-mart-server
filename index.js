@@ -58,6 +58,8 @@ async function run() {
   try {
     const userCollection = client.db("e-mart").collection("users");
     const profileCollection = client.db("e-mart").collection("profile");
+    const addressCollection = client.db("e-mart").collection("addresses");
+    const deliveryChargeCollection = client.db("e-mart").collection("deliveryCharge");
     const couponsCollection = client.db("e-mart").collection("coupons");
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
@@ -186,19 +188,44 @@ async function run() {
       }
     });  
 
-    app.post("/upload-profile", verifyJWT, async (req, res) => {
+    app.post('/upload-profile', verifyJWT, async (req, res) => {
       const newProfile = req.body;
-      console.log(newProfile, "new");
-      const exist = await profileCollection.findOne({
-        slug: newProfile?.slug,
-      });
-      if (exist) {
-        res.status(409).send({ message: "Category Name already existed" });
+      const existingProfile = await profileCollection.findOne({ email: newProfile.email });
+    
+      if (existingProfile) {
+        // Profile with the email already exists, update the information
+        const result = await profileCollection.updateOne(
+          { email: newProfile.email },
+          { $set: newProfile }
+        );
+    
+        if (result.modifiedCount === 1) {
+          res.status(200).send({ message: 'Profile updated successfully' });
+        } else {
+          res.status(500).send({ message: 'Failed to update profile' });
+        }
       } else {
+        // Profile with the email doesn't exist, create a new profile
         const result = await profileCollection.insertOne(newProfile);
-        res.status(200).send(result);
+    
+        if (result.insertedCount === 1) {
+          res.status(200).send({ message: 'Profile created successfully' });
+        } else {
+          res.status(500).send({ message: 'Failed to create profile' });
+        }
       }
     });
+
+
+    //-----------------------------Address---------------------------------
+
+    app.get("/address", async (req, res) => {
+      const result = await addressCollection.find().toArray();
+      //console.log(result);
+      res.send(result);
+    });
+
+
 
     //----------------------------- Products ----------------------------------
 
@@ -258,6 +285,46 @@ async function run() {
       } catch (error) {
         console.error("Error updating product:", error);
         res.status(500).json({ message: "Error updating product." });
+      }
+    });
+
+
+    // --------------------------------Delivery Charge -------------------------------
+
+
+    app.get("/get-delivery-charge", async (req, res) => {
+      const query = {};
+      const cursor = deliveryChargeCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+
+    app.post('/delivery-charge', verifyJWT, async (req, res) => {
+      const newDeliveryCharge = req.body;
+      const existingDeliveryCharge = await deliveryChargeCollection.findOne({ address: newDeliveryCharge.address });
+    
+      if (existingDeliveryCharge) {
+        
+        const result = await deliveryChargeCollection.updateOne(
+          { address: newDeliveryCharge.address },
+          { $set: newDeliveryCharge }
+        );
+    
+        if (result.modifiedCount === 1) {
+          res.status(200).send({ message: 'Delivery Charge updated successfully' });
+        } else {
+          res.status(500).send({ message: 'Failed to update Delivery Charge' });
+        }
+      } else {
+        
+        const result = await deliveryChargeCollection.insertOne(newDeliveryCharge);
+    
+        if (result.insertedCount === 1) {
+          res.status(200).send({ message: 'Delivery Charge created successfully' });
+        } else {
+          res.status(500).send({ message: 'Failed to create Delivery Charge' });
+        }
       }
     });
 
