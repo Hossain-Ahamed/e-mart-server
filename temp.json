@@ -1,0 +1,505 @@
+[
+    {
+        "_id": "64f9cb3a525a357760a5f530",
+        "name": "Bagerhat",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f531",
+        "name": "Bandarban",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f532",
+        "name": "Barguna",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f533",
+        "name": "Barishal",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f534",
+        "name": "Bhola",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f535",
+        "name": "Bogura",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f536",
+        "name": "Brahamanbaria",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f537",
+        "name": "Chandpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f538",
+        "name": "Chattogram",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f539",
+
+        "name": "Chuadanga",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53a",
+
+        "name": "Cumilla",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53b",
+
+        "name": "Cox's Bazar",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53c",
+
+        "name": "Dhaka",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53d",
+
+        "name": "Dinajpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53e",
+
+        "name": "Faridpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f53f",
+
+        "name": "Feni",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f540",
+
+        "name": "Gaibandha",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f541",
+
+        "name": "Gazipur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f542",
+
+        "name": "Gopalganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f543",
+
+        "name": "Habiganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f544",
+
+        "name": "Jamalpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f545",
+
+        "name": "Jashore",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f546",
+
+        "name": "Jhalokati",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f547",
+
+        "name": "Jhenaidah",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f548",
+
+        "name": "Joypurhat",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f549",
+
+        "name": "Khagrachhari",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54a",
+
+        "name": "Khulna",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54b",
+
+        "name": "Kishoreganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54c",
+
+        "name": "Kurigram",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54d",
+
+        "name": "Kushtia",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54e",
+
+        "name": "Lakshmipur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f54f",
+
+        "name": "Lalmonirhat",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f550",
+
+        "name": "Madaripur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f551",
+
+        "name": "Magura",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f552",
+
+        "name": "Manikganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f553",
+
+        "name": "Maulvibazar",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f554",
+
+        "name": "Meherpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f555",
+
+        "name": "Munshiganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f556",
+
+        "name": "Mymensingh",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f557",
+
+        "name": "Naogaon",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f558",
+
+        "name": "Narail",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f559",
+
+        "name": "Narayanganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55a",
+
+        "name": "Narsingdi",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55b",
+
+        "name": "Natore",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55c",
+
+        "name": "Nawabganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55d",
+
+        "name": "Netrakona",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55e",
+
+        "name": "Nilphamari",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f55f",
+
+        "name": "Noakhali",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f560",
+
+        "name": "Pabna",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f561",
+
+        "name": "Panchagarh",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f562",
+
+        "name": "Patuakhali",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f563",
+
+        "name": "Pirojpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f564",
+
+        "name": "Rajbari",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f565",
+
+        "name": "Rajshahi",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f566",
+
+        "name": "Rangamati",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f567",
+
+        "name": "Rangpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f568",
+
+        "name": "Satkhira",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f569",
+
+        "name": "Shariatpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56a",
+
+        "name": "Sherpur",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56b",
+
+        "name": "Sirajganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56c",
+
+        "name": "Sunamganj",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56d",
+
+        "name": "Sylhet",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56e",
+
+        "name": "Tangail",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    },
+    {
+        "_id": "64f9cb3a525a357760a5f56f",
+
+        "name": "Thakurgaon",
+        "DefaultdeliveryCharge" : 0.00,
+        "minimumOrderLimit" : 1000.0,
+        "DiscountedDeliveryCharge" : 0.00
+    }
+]
