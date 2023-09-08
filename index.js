@@ -172,11 +172,11 @@ async function run() {
 
     app.get('/get-profile/:email', async (req, res) => {
       const email = req.params.email;
-  
+
       // Get the user's profile based on their email
       try {
         const userProfile = await profileCollection.findOne({ email: email });
-  
+
         if (userProfile) {
           res.status(200).json(userProfile);
         } else {
@@ -186,19 +186,19 @@ async function run() {
         console.error('Error fetching user profile:', err);
         res.status(500).json({ message: 'Internal server error' });
       }
-    });  
+    });
 
     app.post('/upload-profile', verifyJWT, async (req, res) => {
       const newProfile = req.body;
       const existingProfile = await profileCollection.findOne({ email: newProfile.email });
-    
+
       if (existingProfile) {
         // Profile with the email already exists, update the information
         const result = await profileCollection.updateOne(
           { email: newProfile.email },
           { $set: newProfile }
         );
-    
+
         if (result.modifiedCount === 1) {
           res.status(200).send({ message: 'Profile updated successfully' });
         } else {
@@ -207,7 +207,7 @@ async function run() {
       } else {
         // Profile with the email doesn't exist, create a new profile
         const result = await profileCollection.insertOne(newProfile);
-    
+
         if (result.insertedCount === 1) {
           res.status(200).send({ message: 'Profile created successfully' });
         } else {
@@ -220,7 +220,7 @@ async function run() {
     //-----------------------------Address---------------------------------
 
     app.get("/address", async (req, res) => {
-      const result = await addressCollection.find().toArray();
+      const result = await deliveryChargeCollection.find().toArray();
       //console.log(result);
       res.send(result);
     });
@@ -302,30 +302,28 @@ async function run() {
 
     app.post('/delivery-charge', verifyJWT, async (req, res) => {
       const newDeliveryCharge = req.body;
-      const existingDeliveryCharge = await deliveryChargeCollection.findOne({ address: newDeliveryCharge.address });
+      
+      const existingDeliveryCharge = await deliveryChargeCollection.findOne({ name: newDeliveryCharge?.name });
     
-      if (existingDeliveryCharge) {
-        
-        const result = await deliveryChargeCollection.updateOne(
-          { address: newDeliveryCharge.address },
-          { $set: newDeliveryCharge }
-        );
-    
-        if (result.modifiedCount === 1) {
-          res.status(200).send({ message: 'Delivery Charge updated successfully' });
-        } else {
-          res.status(500).send({ message: 'Failed to update Delivery Charge' });
-        }
-      } else {
-        
-        const result = await deliveryChargeCollection.insertOne(newDeliveryCharge);
-    
-        if (result.insertedCount === 1) {
-          res.status(200).send({ message: 'Delivery Charge created successfully' });
-        } else {
-          res.status(500).send({ message: 'Failed to create Delivery Charge' });
-        }
+      if (!existingDeliveryCharge) {
+        res.status(404).send('error occured ')
       }
+    
+
+
+      const result = await deliveryChargeCollection.updateOne(
+        { name: newDeliveryCharge.name },
+        { $set: newDeliveryCharge }
+      );
+
+      if (result.modifiedCount === 1) {
+        res.status(200).send({ message: 'Delivery Charge updated successfully' });
+      } else {
+        res.status(500).send({ message: 'Failed to update Delivery Charge' });
+      }
+
+
+
     });
 
 
@@ -943,6 +941,7 @@ async function run() {
               price: parseFloat(product?.price || 0),
               quantity: item?.quantity,
               stock: product?.stock,
+              checked: item?.checked
             };
           })
         );
@@ -987,7 +986,9 @@ async function run() {
           { upsert: true }
         );
 
-        res.status(201).json(cart);
+
+        res.status(200).send(true);
+        // res.status(201).json(cart);
       } catch (error) {
         res.status(500).json({ error: "An error occurred" });
       }
@@ -997,7 +998,7 @@ async function run() {
     app.put("/update-cart-product/:email", verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
       const { email, productId, quantity, checked } = req.body;
-      console.log(email, productId, quantity, checked, 9);
+      // console.log(email, productId, quantity, checked, 9);
 
       if (decodedEmail !== email) {
         res
@@ -1018,11 +1019,11 @@ async function run() {
         );
         if (existingItemIndex !== -1) {
           cart.cart[existingItemIndex].quantity = quantity;
-          
-            cart.cart[existingItemIndex].checked = checked;
-        
+
+          cart.cart[existingItemIndex].checked = checked;
+
         }
-        console.log(cart)
+        // console.log(cart)
         await cartCollection.updateOne(
           { email },
           { $set: cart },
