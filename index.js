@@ -292,7 +292,7 @@ async function run() {
     // --------------------------------Delivery Charge -------------------------------
 
 
-    app.get("/get-delivery-charge", async (req, res) => {
+    app.get("/get-delivery-charge/:location", async (req, res) => {
       const query = {};
       const cursor = deliveryChargeCollection.find(query);
       const result = await cursor.toArray();
@@ -302,13 +302,13 @@ async function run() {
 
     app.post('/delivery-charge', verifyJWT, async (req, res) => {
       const newDeliveryCharge = req.body;
-      
+
       const existingDeliveryCharge = await deliveryChargeCollection.findOne({ name: newDeliveryCharge?.name });
-    
+
       if (!existingDeliveryCharge) {
         res.status(404).send('error occured ')
       }
-    
+
 
 
       const result = await deliveryChargeCollection.updateOne(
@@ -335,7 +335,7 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    
+
     app.post("/coupon", verifyJWT, async (req, res) => {
       const newCoupon = req.body;
       console.log(newCoupon, "new");
@@ -1074,6 +1074,203 @@ async function run() {
         }
       }
     );
+
+    // ______________checkout  ______________
+
+    //get all the selected orders
+    const getcartDataWithProductDetail_CHECKED = async (email) => {
+      try {
+        const cart = await cartCollection.findOne({ email });
+
+        const checkedItems = cart.cart.filter((item) => item?.checked);  //only checked
+        const cartItemsWithDetails = await Promise.all(
+          checkedItems.map(async (item) => {
+
+            if (item?.checked) {
+              const product = await productsCollection.findOne(
+                { _id: new ObjectId(item.productId) },
+                {
+                  projection: {
+                    productTitle: 1,
+                    image: 1,
+                    mainPrice: 1,
+                    price: 1,
+                    stock: 1,
+                  },
+                }
+              );
+
+              return {
+                _id: product?._id,
+                productTitle: product?.productTitle,
+                image: product?.image,
+                mainPrice: parseFloat(product?.mainPrice || 0),
+                price: parseFloat(product?.price || 0),
+                quantity: item?.quantity,
+                stock: product?.stock,
+                checked: item?.checked
+              };
+            }
+
+          })
+        );
+        return cartItemsWithDetails;
+      } catch (error) {
+        return [];
+      }
+    }
+
+    const sumOfTotalProductPrice_Checked = async (data) => {
+      // console.log(data)
+      let total = 0;
+      if (data) {
+        total = data.reduce((sum, product) => product?.price * product?.quantity + sum, 0);
+        return Math.ceil(total);
+
+      } else {
+        return false;
+      }
+
+
+    }
+
+    const getDeliveryCharge_ofSingleUser = async (email) => {
+      const user = await profileCollection.findOne({ email: email });
+      if (user) {
+        const deiveryCharge = await deliveryChargeCollection.findOne({ name: user?.city });
+        return deiveryCharge;
+      } else {
+        return false;
+      }
+
+    }
+
+    const getCourierCharge = async (deliveryCharge, totalPriceOfProduct) => {
+      let courirerCharge = 10000;
+      if (totalPriceOfProduct >= deliveryCharge?.minimumOrderLimit) {
+        courirerCharge = deliveryCharge?.DiscountedDeliveryCharge;
+      } else {
+        courirerCharge = deliveryCharge?.DefaultdeliveryCharge;
+      }
+      return courirerCharge;
+    }
+    app.get("/checkout", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data;
+      const email = req.query.email;
+
+
+      if (decodedEmail !== email) {
+        res
+          .status(401)
+          .send({ message: "unauthorized access from this email" });
+      }
+
+
+      const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(email);
+      const total = await sumOfTotalProductPrice_Checked(CheckkedProdcuts_DataWithProductDetail);
+      let deliveryCharge = await getDeliveryCharge_ofSingleUser(email);
+      if (deliveryCharge) {
+        const courirerCharge = await getCourierCharge(deliveryCharge, total);
+        res.status(200).send({ cart: CheckkedProdcuts_DataWithProductDetail, deliveryCharge: courirerCharge, totalProductPrice: total })
+      } else {
+        res.status(500).send({ msg: 'delivery charge data not found' })
+      }
+
+
+
+    });
+
+
+
+
+    // ___________________coupon _________________________
+
+    const isDateInRange = async (startDateString, endDateString) => {
+      const currentDate = new Date();
+      const startDate = new Date(startDateString);
+      const endDate = new Date(endDateString);
+
+      return currentDate >= startDate && currentDate <= endDate;
+    }
+
+    const applicable_Or_Not_Coupon_ForMultipleUse = async (couponData, userCouponData, couponName) => {
+      const numberOf_Use_OfThatCoupon = userCouponData.filter(i => i === couponName);
+      if (numberOf_Use_OfThatCoupon.length >= couponData?.numberOfUse) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+
+
+    const CalculateDiscount = async (email, couponData) => {
+      let discountedAmmount = 0;
+      const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(email);
+      const total = await sumOfTotalProductPrice_Checked(CheckkedProdcuts_DataWithProductDetail);
+      discountedAmmount = total * (parseFloat(couponData?.percentage) / 100);
+      // console.log(couponData?.percentage, " ", total, " ");
+      if (discountedAmmount > couponData?.maximumDiscountLimit) {
+        discountedAmmount = couponData?.maximumDiscountLimit;
+      }
+      return Math.floor(discountedAmmount);
+    }
+
+    app.post("/get-discount-by-coupon", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data;
+      const email = req.query.email;
+
+      const { couponName } = req.body;
+
+
+
+      if (decodedEmail !== email) {
+        res.status(401).send({ message: "unauthorized access from this email" });
+      }
+
+
+      const couponData = await couponsCollection.findOne({ couponCode: couponName });
+
+      if (!couponData) {
+        res.status(404).send({ message: 'No coupon by this name' })
+      }
+      const user = await profileCollection.findOne(
+        { email: email },
+        { projection: { _id: 0, coupon: 1 } }
+      );
+
+      if (!user) {
+        res.status(404).send({ message: 'No user by this name' })
+      }
+
+      let userCouponData = [];
+
+      if (user?.coupon) {
+        userCouponData = user?.coupon;
+      }
+
+      const isValidCouponByTime = await isDateInRange(couponData?.start_Date, couponData?.end_Date);
+      const applicable_forMultipleUse = await applicable_Or_Not_Coupon_ForMultipleUse(couponData, userCouponData, couponName);
+
+      if (!isValidCouponByTime) {
+        res.status(403).send({ message: 'Campaign Time Over' })
+      }
+
+      if (!applicable_forMultipleUse) {
+        res.status(403).send({ message: 'Maximum time used' })
+      }
+
+      if (isValidCouponByTime && applicable_forMultipleUse) {
+        const discountedAmmount = await CalculateDiscount(email, couponData);
+        const responseData = { couponCode: couponData?.couponCode, discountedAmmount: discountedAmmount };
+        // console.log(responseData)
+        res.status(200).send(responseData);
+      }
+
+
+    })
+
+
+
 
     app.delete("/products/:id", async (req, res) => {
       const id = req.params.id;
