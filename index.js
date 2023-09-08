@@ -1248,7 +1248,9 @@ async function run() {
 
       if (!couponData) {
         res.status(404).send({ message: 'No coupon by this name' })
-      }
+      }else{
+
+
       const user = await profileCollection.findOne(
         { email: email },
         { projection: { _id: 0, coupon: 1 } }
@@ -1267,6 +1269,19 @@ async function run() {
       const isValidCouponByTime = await isDateInRange(couponData?.start_Date, couponData?.end_Date);
       const applicable_forMultipleUse = await applicable_Or_Not_Coupon_ForMultipleUse(couponData, userCouponData, couponName);
 
+      if (!isValidCouponByTime || !applicable_forMultipleUse) {
+        let msg = "";
+
+        if(!applicable_forMultipleUse){
+          msg= 'Maximum time used';
+        }
+        if(!isValidCouponByTime){
+          msg = 'Campaign Time Over';
+        }
+        res.status(403).send({ message:  msg})
+      }
+
+    
 
 
       if (isValidCouponByTime && applicable_forMultipleUse) {
@@ -1274,16 +1289,8 @@ async function run() {
         const responseData = { couponCode: couponData?.couponCode, discountedAmmount: discountedAmmount };
         // console.log(responseData)
         res.status(200).send(responseData);
-      } else {
-        if (!isValidCouponByTime) {
-          res.status(403).send({ message: 'Campaign Time Over' })
-        }
-
-        if (!applicable_forMultipleUse) {
-          res.status(403).send({ message: 'Maximum time used' })
-        }
-      }
-
+      } 
+    }
 
     })
 
