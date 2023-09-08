@@ -928,7 +928,7 @@ async function run() {
                   image: 1,
                   mainPrice: 1,
                   price: 1,
-                  stock: 1,
+                  quantity: 1,
                 },
               }
             );
@@ -940,7 +940,7 @@ async function run() {
               mainPrice: parseFloat(product?.mainPrice || 0),
               price: parseFloat(product?.price || 0),
               quantity: item?.quantity,
-              stock: product?.stock,
+              stock: parseInt(product?.quantity || 0),
               checked: item?.checked
             };
           })
@@ -1095,7 +1095,7 @@ async function run() {
                     image: 1,
                     mainPrice: 1,
                     price: 1,
-                    stock: 1,
+                    quantity: 1,
                   },
                 }
               );
@@ -1107,14 +1107,14 @@ async function run() {
                 mainPrice: parseFloat(product?.mainPrice || 0),
                 price: parseFloat(product?.price || 0),
                 quantity: item?.quantity,
-                stock: product?.stock,
+                stock:parseInt(product?.quantity || 0),
                 checked: item?.checked
               };
             }
 
           })
         );
-        return cartItemsWithDetails;
+        return cartItemsWithDetails.filter(i=>i.stock>0);
       } catch (error) {
         return [];
       }
