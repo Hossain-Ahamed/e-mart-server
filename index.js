@@ -1,11 +1,11 @@
 const express = require("express");
+const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
-
-const app = express();
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 const corsOptions = {
@@ -59,7 +59,9 @@ async function run() {
     const userCollection = client.db("e-mart").collection("users");
     const profileCollection = client.db("e-mart").collection("profile");
     const addressCollection = client.db("e-mart").collection("addresses");
-    const deliveryChargeCollection = client.db("e-mart").collection("deliveryCharge");
+    const deliveryChargeCollection = client
+      .db("e-mart")
+      .collection("deliveryCharge");
     const couponsCollection = client.db("e-mart").collection("coupons");
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
@@ -75,6 +77,7 @@ async function run() {
       .db("e-mart")
       .collection("beautyCategory");
     const cartCollection = client.db("e-mart").collection("carts");
+    const paymentCollection = client.db("e-mart").collection("payments");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -167,10 +170,9 @@ async function run() {
       res.send(result);
     });
 
-
     // ----------------------------------Upload Profile------------------------------
 
-    app.get('/get-profile/:email', async (req, res) => {
+    app.get("/get-profile/:email", async (req, res) => {
       const email = req.params.email;
 
       // Get the user's profile based on their email
@@ -180,17 +182,19 @@ async function run() {
         if (userProfile) {
           res.status(200).json(userProfile);
         } else {
-          res.status(404).json({ message: 'User profile not found' });
+          res.status(404).json({ message: "User profile not found" });
         }
       } catch (err) {
-        console.error('Error fetching user profile:', err);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error("Error fetching user profile:", err);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
-    app.post('/upload-profile', verifyJWT, async (req, res) => {
+    app.post("/upload-profile", verifyJWT, async (req, res) => {
       const newProfile = req.body;
-      const existingProfile = await profileCollection.findOne({ email: newProfile.email });
+      const existingProfile = await profileCollection.findOne({
+        email: newProfile.email,
+      });
 
       if (existingProfile) {
         // Profile with the email already exists, update the information
@@ -200,22 +204,21 @@ async function run() {
         );
 
         if (result.modifiedCount === 1) {
-          res.status(200).send({ message: 'Profile updated successfully' });
+          res.status(200).send({ message: "Profile updated successfully" });
         } else {
-          res.status(500).send({ message: 'Failed to update profile' });
+          res.status(500).send({ message: "Failed to update profile" });
         }
       } else {
         // Profile with the email doesn't exist, create a new profile
         const result = await profileCollection.insertOne(newProfile);
 
         if (result.insertedCount === 1) {
-          res.status(200).send({ message: 'Profile created successfully' });
+          res.status(200).send({ message: "Profile created successfully" });
         } else {
-          res.status(500).send({ message: 'Failed to create profile' });
+          res.status(500).send({ message: "Failed to create profile" });
         }
       }
     });
-
 
     //-----------------------------Address---------------------------------
 
@@ -224,8 +227,6 @@ async function run() {
       //console.log(result);
       res.send(result);
     });
-
-
 
     //----------------------------- Products ----------------------------------
 
@@ -288,9 +289,7 @@ async function run() {
       }
     });
 
-
     // --------------------------------Delivery Charge -------------------------------
-
 
     app.get("/get-delivery-charge/:location", async (req, res) => {
       const query = {};
@@ -299,17 +298,16 @@ async function run() {
       res.send(result);
     });
 
-
-    app.post('/delivery-charge', verifyJWT, async (req, res) => {
+    app.post("/delivery-charge", verifyJWT, async (req, res) => {
       const newDeliveryCharge = req.body;
 
-      const existingDeliveryCharge = await deliveryChargeCollection.findOne({ name: newDeliveryCharge?.name });
+      const existingDeliveryCharge = await deliveryChargeCollection.findOne({
+        name: newDeliveryCharge?.name,
+      });
 
       if (!existingDeliveryCharge) {
-        res.status(404).send('error occured ')
+        res.status(404).send("error occured ");
       }
-
-
 
       const result = await deliveryChargeCollection.updateOne(
         { name: newDeliveryCharge.name },
@@ -317,15 +315,13 @@ async function run() {
       );
 
       if (result.modifiedCount === 1) {
-        res.status(200).send({ message: 'Delivery Charge updated successfully' });
+        res
+          .status(200)
+          .send({ message: "Delivery Charge updated successfully" });
       } else {
-        res.status(500).send({ message: 'Failed to update Delivery Charge' });
+        res.status(500).send({ message: "Failed to update Delivery Charge" });
       }
-
-
-
     });
-
 
     //--------------------------------Coupon Code -----------------------------
 
@@ -356,7 +352,6 @@ async function run() {
       const result = await couponsCollection.deleteOne(query);
       res.send(result);
     });
-
 
     //------------------------------------- Categories ---------------------------
 
@@ -934,17 +929,21 @@ async function run() {
             );
 
             // Determine the updated quantity
-            const updatedQuantity = parseInt(product?.quantity || 0) < item?.quantity ?   parseInt(product?.quantity || 0) : item?.quantity ;
+            const updatedQuantity =
+              parseInt(product?.quantity || 0) < item?.quantity
+                ? parseInt(product?.quantity || 0)
+                : item?.quantity;
 
             // Determine the updated checked value
-            const updatedChecked = parseInt(product?.quantity || 0) > 0 ? item?.checked : false;
+            const updatedChecked =
+              parseInt(product?.quantity || 0) > 0 ? item?.checked : false;
 
             await cartCollection.updateOne(
-              { email, 'cart.productId': item.productId },
+              { email, "cart.productId": item.productId },
               {
                 $set: {
-                  'cart.$.quantity': updatedQuantity,
-                  'cart.$.checked': updatedChecked,
+                  "cart.$.quantity": updatedQuantity,
+                  "cart.$.checked": updatedChecked,
                 },
               }
             );
@@ -1002,8 +1001,11 @@ async function run() {
           { upsert: true }
         );
 
+        // ...
+        // After updating the cart in the database
+        const updatedCart = cart.cart; // Assuming `cart.cart` contains the updated cart data
+        res.status(200).json({ cart: updatedCart });
 
-        res.status(200).send(true);
         // res.status(201).json(cart);
       } catch (error) {
         res.status(500).json({ error: "An error occurred" });
@@ -1037,7 +1039,6 @@ async function run() {
           cart.cart[existingItemIndex].quantity = quantity;
 
           cart.cart[existingItemIndex].checked = checked;
-
         }
         // console.log(cart)
         await cartCollection.updateOne(
@@ -1098,10 +1099,9 @@ async function run() {
       try {
         const cart = await cartCollection.findOne({ email });
 
-        const checkedItems = cart.cart.filter((item) => item?.checked);  //only checked
+        const checkedItems = cart.cart.filter((item) => item?.checked); //only checked
         const cartItemsWithDetails = await Promise.all(
           checkedItems.map(async (item) => {
-
             if (item?.checked) {
               const product = await productsCollection.findOne(
                 { _id: new ObjectId(item.productId) },
@@ -1118,48 +1118,49 @@ async function run() {
 
               return {
                 _id: product?._id,
+                productId: product?._id,
                 productTitle: product?.productTitle,
                 image: product?.image,
                 mainPrice: parseFloat(product?.mainPrice || 0),
                 price: parseFloat(product?.price || 0),
                 quantity: item?.quantity,
                 stock: parseInt(product?.quantity || 0),
-                checked: item?.checked
+                checked: item?.checked,
               };
             }
-
           })
         );
-        return cartItemsWithDetails.filter(i => i.stock > 0);
+        return cartItemsWithDetails.filter((i) => i.stock > 0);
       } catch (error) {
         return [];
       }
-    }
+    };
 
     const sumOfTotalProductPrice_Checked = async (data) => {
       // console.log(data)
       let total = 0;
       if (data) {
-        total = data.reduce((sum, product) => product?.price * product?.quantity + sum, 0);
+        total = data.reduce(
+          (sum, product) => product?.price * product?.quantity + sum,
+          0
+        );
         return Math.ceil(total);
-
       } else {
         return false;
       }
-
-
-    }
+    };
 
     const getDeliveryCharge_ofSingleUser = async (email) => {
       const user = await profileCollection.findOne({ email: email });
       if (user) {
-        const deiveryCharge = await deliveryChargeCollection.findOne({ name: user?.city });
+        const deiveryCharge = await deliveryChargeCollection.findOne({
+          name: user?.city,
+        });
         return deiveryCharge;
       } else {
         return false;
       }
-
-    }
+    };
 
     const getCourierCharge = async (deliveryCharge, totalPriceOfProduct) => {
       let courirerCharge = 10000;
@@ -1169,11 +1170,12 @@ async function run() {
         courirerCharge = deliveryCharge?.DefaultdeliveryCharge;
       }
       return courirerCharge;
-    }
+    };
+    
+
     app.get("/checkout", verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
       const email = req.query.email;
-
 
       if (decodedEmail !== email) {
         res
@@ -1181,23 +1183,25 @@ async function run() {
           .send({ message: "unauthorized access from this email" });
       }
 
-
-      const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(email);
-      const total = await sumOfTotalProductPrice_Checked(CheckkedProdcuts_DataWithProductDetail);
+      const CheckkedProdcuts_DataWithProductDetail =
+        await getcartDataWithProductDetail_CHECKED(email);
+      const total = await sumOfTotalProductPrice_Checked(
+        CheckkedProdcuts_DataWithProductDetail
+      );
       let deliveryCharge = await getDeliveryCharge_ofSingleUser(email);
       if (deliveryCharge) {
         const courirerCharge = await getCourierCharge(deliveryCharge, total);
-        res.status(200).send({ cart: CheckkedProdcuts_DataWithProductDetail, deliveryCharge: courirerCharge, totalProductPrice: total })
+        res
+          .status(200)
+          .send({
+            cart: CheckkedProdcuts_DataWithProductDetail,
+            deliveryCharge: courirerCharge,
+            totalProductPrice: total,
+          });
       } else {
-        res.status(500).send({ msg: 'delivery charge data not found' })
+        res.status(500).send({ msg: "delivery charge data not found" });
       }
-
-
-
     });
-
-
-
 
     // ___________________coupon _________________________
 
@@ -1207,29 +1211,37 @@ async function run() {
       const endDate = new Date(endDateString);
 
       return currentDate >= startDate && currentDate <= endDate;
-    }
+    };
 
-    const applicable_Or_Not_Coupon_ForMultipleUse = async (couponData, userCouponData, couponName) => {
-      const numberOf_Use_OfThatCoupon = userCouponData.filter(i => i === couponName);
+    const applicable_Or_Not_Coupon_ForMultipleUse = async (
+      couponData,
+      userCouponData,
+      couponName
+    ) => {
+      const numberOf_Use_OfThatCoupon = userCouponData.filter(
+        (i) => i === couponName
+      );
       if (numberOf_Use_OfThatCoupon.length >= couponData?.numberOfUse) {
         return false;
       } else {
         return true;
       }
-    }
-
+    };
 
     const CalculateDiscount = async (email, couponData) => {
       let discountedAmmount = 0;
-      const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(email);
-      const total = await sumOfTotalProductPrice_Checked(CheckkedProdcuts_DataWithProductDetail);
+      const CheckkedProdcuts_DataWithProductDetail =
+        await getcartDataWithProductDetail_CHECKED(email);
+      const total = await sumOfTotalProductPrice_Checked(
+        CheckkedProdcuts_DataWithProductDetail
+      );
       discountedAmmount = total * (parseFloat(couponData?.percentage) / 100);
       // console.log(couponData?.percentage, " ", total, " ");
       if (discountedAmmount > couponData?.maximumDiscountLimit) {
         discountedAmmount = couponData?.maximumDiscountLimit;
       }
       return Math.floor(discountedAmmount);
-    }
+    };
 
     app.post("/get-discount-by-coupon", verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
@@ -1237,65 +1249,106 @@ async function run() {
 
       const { couponName } = req.body;
 
-
-
       if (decodedEmail !== email) {
-        res.status(401).send({ message: "unauthorized access from this email" });
+        res
+          .status(401)
+          .send({ message: "unauthorized access from this email" });
       }
 
-
-      const couponData = await couponsCollection.findOne({ couponCode: couponName });
+      const couponData = await couponsCollection.findOne({
+        couponCode: couponName,
+      });
 
       if (!couponData) {
-        res.status(404).send({ message: 'No coupon by this name' })
-      }else{
+        res.status(404).send({ message: "No coupon by this name" });
+      } else {
+        const user = await profileCollection.findOne(
+          { email: email },
+          { projection: { _id: 0, coupon: 1 } }
+        );
 
-
-      const user = await profileCollection.findOne(
-        { email: email },
-        { projection: { _id: 0, coupon: 1 } }
-      );
-
-      if (!user) {
-        res.status(404).send({ message: 'No user by this name' })
-      }
-
-      let userCouponData = [];
-
-      if (user?.coupon) {
-        userCouponData = user?.coupon;
-      }
-
-      const isValidCouponByTime = await isDateInRange(couponData?.start_Date, couponData?.end_Date);
-      const applicable_forMultipleUse = await applicable_Or_Not_Coupon_ForMultipleUse(couponData, userCouponData, couponName);
-
-      if (!isValidCouponByTime || !applicable_forMultipleUse) {
-        let msg = "";
-
-        if(!applicable_forMultipleUse){
-          msg= 'Maximum time used';
+        if (!user) {
+          res.status(404).send({ message: "No user by this name" });
         }
-        if(!isValidCouponByTime){
-          msg = 'Campaign Time Over';
+
+        let userCouponData = [];
+
+        if (user?.coupon) {
+          userCouponData = user?.coupon;
         }
-        res.status(403).send({ message:  msg})
+
+        const isValidCouponByTime = await isDateInRange(
+          couponData?.start_Date,
+          couponData?.end_Date
+        );
+        const applicable_forMultipleUse =
+          await applicable_Or_Not_Coupon_ForMultipleUse(
+            couponData,
+            userCouponData,
+            couponName
+          );
+
+        if (!isValidCouponByTime || !applicable_forMultipleUse) {
+          let msg = "";
+
+          if (!applicable_forMultipleUse) {
+            msg = "Maximum time used";
+          }
+          if (!isValidCouponByTime) {
+            msg = "Campaign Time Over";
+          }
+          res.status(403).send({ message: msg });
+        }
+
+        if (isValidCouponByTime && applicable_forMultipleUse) {
+          const discountedAmmount = await CalculateDiscount(email, couponData);
+          const responseData = {
+            couponCode: couponData?.couponCode,
+            discountedAmmount: discountedAmmount,
+          };
+          // console.log(responseData)
+          res.status(200).send(responseData);
+        }
       }
+    });
 
-    
 
+    //--------------------------------Payment Intent--------------------------------
 
-      if (isValidCouponByTime && applicable_forMultipleUse) {
-        const discountedAmmount = await CalculateDiscount(email, couponData);
-        const responseData = { couponCode: couponData?.couponCode, discountedAmmount: discountedAmmount };
-        // console.log(responseData)
-        res.status(200).send(responseData);
-      } 
-    }
+   // create payment intent
+   app.post('/create-payment-intent',  async (req, res) => {
+    const { price } = req.body;
+    console.log(1, price)
+    const amount = parseInt(price * 100);
+    console.log(2, amount)
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: 'usd',
+      payment_method_types: ['card']
+    });
 
+    console.log(3, paymentIntent)
+
+    res.send({
+      clientSecret: paymentIntent.client_secret
     })
 
+    //console.log(4, paymentIntent.client_secret)
+
+  })
+
+  app.post('/payments', async(req, res) => {
+    const payment = req.body;
+    const insertResult = await paymentCollection.insertOne(payment);
+
+    const query = {_id: {$in: payment.cartItems.map(id => new ObjectId(id))}};
+    const deleteResult = await cartCollection.deleteMany(query);
+
+    res.send({insertResult, deleteResult})
+  })
 
 
+    
 
     app.delete("/products/:id", async (req, res) => {
       const id = req.params.id;
@@ -1310,8 +1363,6 @@ async function run() {
       const result = await categoryCollection.deleteOne(query);
       res.send(result);
     });
-
-
   } finally {
   }
 }
