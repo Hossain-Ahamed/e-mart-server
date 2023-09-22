@@ -76,6 +76,7 @@ async function run() {
     const beautyCategoryCollection = client
       .db("e-mart")
       .collection("beautyCategory");
+    const wishListCollection = client.db("e-mart").collection("wishList");
     const cartCollection = client.db("e-mart").collection("carts");
     const paymentCollection = client.db("e-mart").collection("payments");
 
@@ -156,7 +157,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/users/admin/:id", verifyJWT, async (req, res) => {
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
       const user = req.body;
       // console.log(user)
@@ -172,8 +173,8 @@ async function run() {
 
     // ----------------------------------Upload Profile------------------------------
 
-    app.get("/get-profile/:email", async (req, res) => {
-      const email = req.params.email;
+    app.get("/get-profile/:email", verifyJWT, async (req, res) => {
+      const email = req?.params?.email;
 
       // Get the user's profile based on their email
       try {
@@ -193,17 +194,17 @@ async function run() {
     app.post("/upload-profile", verifyJWT, async (req, res) => {
       const newProfile = req.body;
       const existingProfile = await profileCollection.findOne({
-        email: newProfile.email,
+        email: newProfile?.email,
       });
 
       if (existingProfile) {
         // Profile with the email already exists, update the information
         const result = await profileCollection.updateOne(
-          { email: newProfile.email },
+          { email: newProfile?.email },
           { $set: newProfile }
         );
 
-        if (result.modifiedCount === 1) {
+        if (result?.modifiedCount === 1) {
           res.status(200).send({ message: "Profile updated successfully" });
         } else {
           res.status(500).send({ message: "Failed to update profile" });
@@ -212,7 +213,7 @@ async function run() {
         // Profile with the email doesn't exist, create a new profile
         const result = await profileCollection.insertOne(newProfile);
 
-        if (result.insertedCount === 1) {
+        if (result?.insertedCount === 1) {
           res.status(200).send({ message: "Profile created successfully" });
         } else {
           res.status(500).send({ message: "Failed to create profile" });
@@ -878,6 +879,129 @@ async function run() {
     //     res.send(result);
     //   });
 
+
+    //-----------------------------Wish List---------------------------------
+
+
+     //Get user's cart with product details
+     app.get("/get-wish-list", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data;
+      const email = req.query.email;
+
+      if (decodedEmail !== email) {
+        res
+          .status(401)
+          .send({ message: "unauthorized access from this email" });
+      }
+
+      try {
+        const wishList = await wishListCollection.findOne({ email });
+
+        const wishListItemsWithDetails = await Promise.all(
+          wishList.wishList.map(async (item) => {
+            const product = await productsCollection.findOne(
+              { _id: new ObjectId(item.productId) },
+              {
+                projection: {
+                  productTitle: 1,
+                  image: 1,
+                  mainPrice: 1,
+                  price: 1,
+                  quantity: 1,
+                },
+              }
+            );
+
+            return {
+              _id: product?._id,
+              productTitle: product?.productTitle,
+              image: product?.image,
+              mainPrice: parseFloat(product?.mainPrice || 0),
+              price: parseFloat(product?.price || 0),
+              quantity: product?.quantity,
+              stock: parseInt(product?.quantity || 0),
+            };
+          })
+        );
+
+        res.status(200).json({ wishList: wishListItemsWithDetails });
+      } catch (error) {
+        res.status(500).json({ error: "An error occurred" });
+      }
+    });
+
+    // Add item to cart
+    app.post("/add-to-wish-list", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data;
+      // console.log(decodedEmail);
+      const { email, productId, quantity, checked } = req.body;
+
+      if (decodedEmail !== email) {
+        res
+          .status(401)
+          .send({ message: "unauathorized access from this email" });
+      }
+
+      try {
+        let wishList = await wishListCollection.findOne({ email });
+
+        if (!wishList) {
+          wishList = { email, wishList: [] };
+        }
+
+        console.log(productId, 'wishId');
+        console.log(wishList, 'wish')
+
+        const existingItemIndex = wishList.wishList.findIndex(
+          (item) => item.productId.toString() === productId
+        );
+        if (existingItemIndex !== -1) {
+          wishList.wishList[existingItemIndex].quantity += quantity;
+        } else {
+          wishList.wishList.push({ productId, quantity, checked });
+        }
+
+        await wishListCollection.updateOne(
+          { email },
+          { $set: wishList },
+          { upsert: true }
+        );
+
+        // ...
+        // After updating the cart in the database
+        const updatedWishList = wishList.wishList; // Assuming `cart.cart` contains the updated cart data
+        res.status(200).json({ wishList: updatedWishList });
+
+        // res.status(201).json(cart);
+      } catch (error) {
+        res.status(500).json({ error: "An error occurred" });
+      }
+    });
+
+
+    app.delete("/remove-from-wish-list/:id", async (req, res) => {
+      const productId = req.params.id; // Use projectId instead of id
+      console.log(productId)
+      const query = { projectId: productId }; // Use projectId field name
+    console.log(query)
+      try {
+        const result = await wishListCollection.deleteOne(query);
+    
+        if (result.deletedCount > 0) {
+          res.send({ success: true, message: "Item deleted successfully" });
+        } else {
+          res.status(404).send({ success: false, message: "Item not found" });
+        }
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+    
+    
+
+
+
     /*
        __________________________________ CART MANAGEMENT _________________________________
     */
@@ -986,6 +1110,9 @@ async function run() {
           cart = { email, cart: [] };
         }
 
+        console.log(productId, 'Productid')
+        console.log(cart, 'cart-cart')
+
         const existingItemIndex = cart.cart.findIndex(
           (item) => item.productId.toString() === productId
         );
@@ -1008,6 +1135,7 @@ async function run() {
 
         // res.status(201).json(cart);
       } catch (error) {
+        console.error(error);
         res.status(500).json({ error: "An error occurred" });
       }
     });
@@ -1320,7 +1448,7 @@ async function run() {
     const { price } = req.body;
     console.log(1, price)
     const amount = parseInt(price * 100);
-    console.log(2, amount)
+    //console.log(2, amount)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: 'usd',
@@ -1333,19 +1461,54 @@ async function run() {
       clientSecret: paymentIntent.client_secret
     })
 
-    //console.log(4, paymentIntent.client_secret)
+    console.log(4, paymentIntent.client_secret)
 
   })
+
+  app.get('/get-payments', verifyJWT, async (req, res) => {
+      const email = req.query.email;
+
+      if (!email) {
+        res.status(401).send([]);
+      }
+      const decodedEmail = req.data;
+       console.log(req.data)
+      console.log(5, decodedEmail)
+      if (email !== decodedEmail) {
+        return res.status(401).send({ error: true, message: 'unauthorized' })
+      }
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+      console.log(result)
+      res.send(result);
+    });
+
 
   app.post('/payments', async(req, res) => {
     const payment = req.body;
     const insertResult = await paymentCollection.insertOne(payment);
 
-    const query = {_id: {$in: payment.cartItems.map(id => new ObjectId(id))}};
+    const query = {productId:  payment.payItems};
+    console.log(query, "QU");
     const deleteResult = await cartCollection.deleteMany(query);
+    console.log(deleteResult)
 
     res.send({insertResult, deleteResult})
   })
+
+
+  app.get("/get-all-ordered-products", verifyJWT, verifyAdmin, async (req, res) => {
+    const result = await paymentCollection.find().toArray();
+    console.log(result);
+    res.send(result);
+  });
+
+
+  app.get("/get-all-user-profile", verifyJWT, verifyAdmin, async (req, res) => {
+    const result = await profileCollection.find().toArray();
+    console.log(result);
+    res.send(result);
+  });
 
 
     
