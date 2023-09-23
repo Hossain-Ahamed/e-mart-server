@@ -1357,25 +1357,25 @@ async function run() {
         }
 
         //get user profile
-        const userProfile = await profileCollection.findOne({email: email})
+        const userProfile = await profileCollection.findOne({ email: email })
 
 
         const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(email);
         const total = await sumOfTotalProductPrice_Checked(CheckkedProdcuts_DataWithProductDetail);
 
-        const discountedData = {discountedAmmount: 0.0, couponCode: "N/A", status: 500};
-        
-        if(couponName){
-        const {status, data} = await calculateDiscountByCoupon(couponName, email)
-        if(status === 200){
-          discountedData.couponCode = data?.couponCode;
-          discountedData.discountedAmmount = data?.discountedAmmount;
-          discountedData.status = status;
+        const discountedData = { discountedAmmount: 0.0, couponCode: "N/A", status: 500 };
+
+        if (couponName) {
+          const { status, data } = await calculateDiscountByCoupon(couponName, email)
+          if (status === 200) {
+            discountedData.couponCode = data?.couponCode;
+            discountedData.discountedAmmount = data?.discountedAmmount;
+            discountedData.status = status;
+          }
         }
-      }
         //DELIVERY CHARGE
         let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
-        const courirerCharge = await getCourierCharge(defaultDeliveryCharge,total);
+        const courirerCharge = await getCourierCharge(defaultDeliveryCharge, total);
 
         const tempProducts = CheckkedProdcuts_DataWithProductDetail.map(i => {
           return {
@@ -1397,60 +1397,65 @@ async function run() {
           discountedAmount: discountedData?.discountedAmmount,
           courirerCharge: courirerCharge,
           finalAmount: Math.ceil(total + courirerCharge - discountedData?.discountedAmmount),
-          orderStatus: [{name: "Payment Pending", message: "N/A", time: new Date().toISOString()}],
+          orderStatus: [{ name: "Payment Pending", message: "N/A", time: new Date().toISOString() }],
           orderedItems: tempProducts,
-          
-           
-        }
-       // console.log(insertionData)
 
-        await ordersCollection.insertOne(insertionData); //insert order data
+
+        }
+
+        //insert order data
+        const newOrder = await ordersCollection.insertOne(insertionData);
+
+
 
         //add coupon to profile
-        if(discountedData?.status === 200){
-          await profileCollection.findOne({email: email}, (err, doc) => {
-            if(err){
-              console.error(err)
-            }
-            if(doc){
-              console.log(doc)
-              if(doc?.coupon && Array.isArray(doc?.coupon)){
-                doc?.coupon.push(discountedData?.couponCode)
-                console.log(doc)
-              }
-              else{
-                doc.coupon = [discountedData.couponCode]
-                console.log(doc)
-              }
+        if (discountedData?.status === 200) {
+          if (userProfile?.coupon && Array.isArray(userProfile?.coupon)) {
+            userProfile?.coupon.push(discountedData?.couponCode)
+          } else {
+            userProfile.coupon = [discountedData?.couponCode];
+          }
+          await profileCollection.updateOne({ email: email }, { $set: { coupon: userProfile.coupon } })
+        }
 
-              profileCollection.updateOne({email: email}, {$set: {coupon: doc.coupon}}, (err, result) => {
-                if(err){
-                  console.error("error while update",err)
-                }
-                else{
-                  console.log("successful")
-                }
-              })
-                
-            }
-          })
-        }
-        else{
-          console.log(discountedData.status)
-        }
 
         //clean the cart
         const productsToRemove = CheckkedProdcuts_DataWithProductDetail.map(i => i?.productId)
-        await cartCollection.updateOne({email: email}, 
-          {$pull: {cart: {productId: {$in: productsToRemove}}}})
+        // await cartCollection.updateOne({ email: email },
+        //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
 
-        res.status(200).send(insertionData)
-        
-        
+        res.status(200).send({ orderData: newOrder });
+
+
       } catch {
         res.status(500).send({ msg: "error" });
       }
     });
+
+    // ________________ PAYMENT For ORDER ___________________
+
+    app.get("/payment-methods", verifyJWT, async (req, res) => {
+      try {
+        const _orderID = req.query._orderID;
+        const email = req.query.email;
+        const decodedEmail = req.data;
+        if (decodedEmail !== email) {
+          res.status(409).send({ message: "unauthorized" });
+          return;
+        }
+        const orderData = await ordersCollection.findOne({ _id: new ObjectId(_orderID) });
+        console.log(orderData);
+        if (orderData) {
+          res.status(200).send({ productLength : orderData?.orderedItems.length , totalAmount  : orderData?.finalAmount});
+        } else {
+          res.status(404).send({ message: "not found" })
+        }
+      } catch {
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+    })
 
     // ___________________coupon _________________________
 
