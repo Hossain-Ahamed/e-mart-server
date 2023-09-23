@@ -1244,6 +1244,27 @@ async function run() {
                 }
               );
 
+              // Determine the updated quantity
+            const updatedQuantity =
+            parseInt(product?.quantity || 0) < item?.quantity
+              ? parseInt(product?.quantity || 0)
+              : item?.quantity;
+
+          // Determine the updated checked value
+          const updatedChecked =
+            parseInt(product?.quantity || 0) > 0 ? item?.checked : false;
+
+          await cartCollection.updateOne(
+            { email, "cart.productId": item.productId },
+            {
+              $set: {
+                "cart.$.quantity": updatedQuantity,
+                "cart.$.checked": updatedChecked,
+              },
+            }
+          );
+
+
               return {
                 _id: product?._id,
                 productId: product?._id,
@@ -1251,9 +1272,9 @@ async function run() {
                 image: product?.image,
                 mainPrice: parseFloat(product?.mainPrice || 0),
                 price: parseFloat(product?.price || 0),
-                quantity: item?.quantity,
+                quantity: updatedQuantity,
                 stock: parseInt(product?.quantity || 0),
-                checked: item?.checked,
+                checked: updatedChecked,
               };
             }
           })
