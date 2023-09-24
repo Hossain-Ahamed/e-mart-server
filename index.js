@@ -1348,12 +1348,13 @@ async function run() {
     app.post("/checkout", verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
       const email = req.query.email;
-      const { couponName } = req.body;
+      const { couponName, orderType, transactionId } = req.body;
       try {
         if (decodedEmail !== email) {
           res
             .status(401)
             .send({ message: "unauthorized access from this email" });
+            return;
         }
 
         //get user profile
@@ -1399,7 +1400,8 @@ async function run() {
           finalAmount: Math.ceil(total + courirerCharge - discountedData?.discountedAmmount),
           orderStatus: [{ name: "Payment Pending", message: "N/A", time: new Date().toISOString() }],
           orderedItems: tempProducts,
-
+          orderType: orderType,
+          transactionId: transactionId,
 
         }
 
@@ -1424,13 +1426,12 @@ async function run() {
         // await cartCollection.updateOne({ email: email },
         //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
 
-        res.status(200).send({ orderData: newOrder });
-
-
-      } catch {
-        res.status(500).send({ msg: "error" });
-      }
-    });
+          return res.status(200).send({ orderData: newOrder });
+        } catch (error) {
+          console.error(error);
+          return res.status(500).send({ msg: "error" });
+        }
+      });
 
     // ________________ PAYMENT For ORDER ___________________
 
@@ -1675,12 +1676,12 @@ async function run() {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
 
-      const query = { productId: payment.payItems };
-      console.log(query, "QU");
-      const deleteResult = await cartCollection.deleteMany(query);
-      console.log(deleteResult);
+      // const query = { productId: payment.payItems };
+      // console.log(query, "QU");
+      // const deleteResult = await cartCollection.deleteMany(query);
+      // console.log(deleteResult);
 
-      res.send({ insertResult, deleteResult });
+      res.send({ insertResult });
     });
 
     app.get(
