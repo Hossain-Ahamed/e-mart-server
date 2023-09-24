@@ -1452,8 +1452,13 @@ async function run() {
             .send({ message: "unauthorized access from this email" });
             return;
         }
+        const newStatus = {
+          name: "Processing",
+          message: `Payment has been confirmed through ${req.body?.typeOfPayment}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:req.body, $push:{orderStatus: newStatus}} )
 
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:req.body} )
         res.status(200).send({ orderData: result });
          
        
@@ -1796,64 +1801,9 @@ app.get("/orders", async (req, res) => {
 
       const responseData = await calculateDiscountByCoupon(couponName, email);
       res.status(responseData?.status).send(responseData?.data);
-
-      // const couponData = await couponsCollection.findOne({
-      //   couponCode: couponName,
-      // });
-
-      // if (!couponData) {
-      //   res.status(404).send({ message: "No coupon by this name" });
-      // } else {
-      //   const user = await profileCollection.findOne(
-      //     { email: email },
-      //     { projection: { _id: 0, coupon: 1 } }
-      //   );
-
-      //   if (!user) {
-      //     res.status(404).send({ message: "No user by this name" });
-      //     return;
-      //   }
-
-      //   let userCouponData = [];
-
-      //   if (user?.coupon) {
-      //     userCouponData = user?.coupon;
-      //   }
-
-      //   const isValidCouponByTime = await isDateInRange(
-      //     couponData?.start_Date,
-      //     couponData?.end_Date
-      //   );
-      //   const applicable_forMultipleUse =
-      //     await applicable_Or_Not_Coupon_ForMultipleUse(
-      //       couponData,
-      //       userCouponData,
-      //       couponName
-      //     );
-
-      //   if (!isValidCouponByTime || !applicable_forMultipleUse) {
-      //     let msg = "";
-
-      //     if (!applicable_forMultipleUse) {
-      //       msg = "Maximum time used";
-      //     }
-      //     if (!isValidCouponByTime) {
-      //       msg = "Campaign Time Over";
-      //     }
-      //     res.status(403).send({ message: msg });
-      //   }
-
-      //   if (isValidCouponByTime && applicable_forMultipleUse) {
-      //     const discountedAmmount = await CalculateDiscount(email, couponData);
-      //     const responseData = {
-      //       couponCode: couponData?.couponCode,
-      //       discountedAmmount: discountedAmmount,
-      //     };
-      //     // console.log(responseData)
-      //     res.status(200).send(responseData);
-      //   }
-      // }
     });
+
+
 
     //--------------------------------Payment Intent--------------------------------
 
@@ -1943,6 +1893,71 @@ app.get("/orders", async (req, res) => {
       const result = await categoryCollection.deleteOne(query);
       res.send(result);
     });
+
+
+    //----------------------------------order detail-------------------------------------
+
+
+    app.get("/order-details", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const _orderId = req.query._id;
+      if (!email) {
+        res.status(401).send([]);
+      }
+      const decodedEmail = req.data;
+      if (email !== decodedEmail) {
+        return res.status(401).send({ error: true, message: "unauthorized" });
+      }
+
+      try{
+        const result =  await ordersCollection.find({userId: new ObjectId(_orderId)})
+        .sort({_id: -1})
+        .limit(15)
+        .project({
+          _id: 1,
+          userAddress: 1,
+          userCity: 1,
+          finalAmount: 1,
+          orderStatus: 1
+        }).toArray();
+        res.status(200).send({allOrders: result})
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+
+    ////order details
+    app.get("/order-detail-view/:_orderId", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const _orderId = req.params._orderId;
+      //console.log(_orderId);
+      if (!email) {
+        res.status(401).send([]);
+      }
+      const decodedEmail = req.data;
+      if (email !== decodedEmail) {
+        return res.status(401).send({ error: true, message: "unauthorized" });
+      }
+
+      try{
+        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)});
+        //console.log(result)
+        res.status(200).send({details: result})
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
   } finally {
   }
 }
