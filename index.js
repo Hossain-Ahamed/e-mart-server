@@ -1344,11 +1344,11 @@ async function run() {
       }
     });
 
-    //place order
+    // //place order
     app.post("/checkout", verifyJWT, async (req, res) => {
       const decodedEmail = req.data;
       const email = req.query.email;
-      const { couponName, orderType, transactionId } = req.body;
+      const { couponName } = req.body;
       try {
         if (decodedEmail !== email) {
           res
@@ -1400,15 +1400,20 @@ async function run() {
           finalAmount: Math.ceil(total + courirerCharge - discountedData?.discountedAmmount),
           orderStatus: [{ name: "Payment Pending", message: "N/A", time: new Date().toISOString() }],
           orderedItems: tempProducts,
-          orderType: orderType,
-          transactionId: transactionId,
-
+          
         }
 
         //insert order data
         const newOrder = await ordersCollection.insertOne(insertionData);
 
+        console.log("New Order:", newOrder);
 
+        // const updateResult = await ordersCollection.updateOne(
+        //   { _id: newOrder._id },
+        //   { $set: { orderType: orderType } }
+        // );
+        
+        // console.log("Update Result:", updateResult);
 
         //add coupon to profile
         if (discountedData?.status === 200) {
@@ -1426,12 +1431,224 @@ async function run() {
         // await cartCollection.updateOne({ email: email },
         //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
 
+
           return res.status(200).send({ orderData: newOrder });
         } catch (error) {
           console.error(error);
           return res.status(500).send({ msg: "error" });
         }
       });
+
+
+      app.patch("/payment/:orderId", verifyJWT, async(req, res) => {
+        const decodedEmail = req.data;
+      const email = req.query.email;
+      const {orderId} = req.params;
+      // const data = req.body;
+      try {
+        if (decodedEmail !== email) {
+          res
+            .status(401)
+            .send({ message: "unauthorized access from this email" });
+            return;
+        }
+
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:req.body} )
+        res.status(200).send({ orderData: result });
+         
+       
+      } catch{
+        res.status(500).send({message: "internal server error!"})
+      }
+      })
+
+
+    // ...
+
+// ...
+
+// ...
+
+// app.post("/checkout", verifyJWT, async (req, res) => {
+//   const decodedEmail = req.data;
+//   const email = req.query.email;
+//   const { couponName, orderType } = req.body;
+//   try {
+//     if (decodedEmail !== email) {
+//       res.status(401).send({ message: "unauthorized access from this email" });
+//       return;
+//     }
+
+//     // Get user profile
+//     const userProfile = await profileCollection.findOne({ email: email });
+
+//     const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(
+//       email
+//     );
+//     const total = await sumOfTotalProductPrice_Checked(
+//       CheckkedProdcuts_DataWithProductDetail
+//     );
+
+//     const discountedData = { discountedAmmount: 0.0, couponCode: "N/A", status: 500 };
+
+//     if (couponName) {
+//       const { status, data } = await calculateDiscountByCoupon(couponName, email);
+//       if (status === 200) {
+//         discountedData.couponCode = data?.couponCode;
+//         discountedData.discountedAmmount = data?.discountedAmmount;
+//         discountedData.status = status;
+//       }
+//     }
+
+//     // DELIVERY CHARGE
+//     let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
+//     const courirerCharge = await getCourierCharge(defaultDeliveryCharge, total);
+
+//     const tempProducts = CheckkedProdcuts_DataWithProductDetail.map((i) => {
+//       return {
+//         productId: i?.productId,
+//         productName: i?.productTitle,
+//         productPrice: i?.price,
+//         productQuantity: i?.quantity,
+//       };
+//     });
+
+//     // Check if an order with the same user and status "Payment Pending" exists
+//     const existingOrder = await ordersCollection.findOne({
+//       userId: userProfile?._id,
+//       "orderStatus.name": "Payment Pending",
+//     });
+
+//     if (existingOrder) {
+//       // Update the existing order's orderType
+//       await ordersCollection.updateOne(
+//         { _id: existingOrder._id },
+//         { $set: { orderType: orderType } }
+//       );
+
+//       return res.status(200).send({ orderData: existingOrder });
+//     } else {
+//       // Create a new order
+//       const insertionData = {
+//         userId: userProfile?._id,
+//         userAddress: userProfile?.address,
+//         userCity: userProfile?.city,
+//         userPhone: userProfile?.phone,
+//         coupon: discountedData?.couponCode,
+//         subTotalAmount: total,
+//         discountedAmount: discountedData?.discountedAmmount,
+//         courirerCharge: courirerCharge,
+//         finalAmount: Math.ceil(
+//           total + courirerCharge - discountedData?.discountedAmmount
+//         ),
+//         orderStatus: [
+//           { name: "Payment Pending", message: "N/A", time: new Date().toISOString() },
+//         ],
+//         orderedItems: tempProducts,
+//         orderType: orderType, // Add orderType here
+//       };
+
+//       const newOrder = await ordersCollection.insertOne(insertionData);
+
+//       console.log("New Order:", newOrder);
+
+//       // Add coupon to profile
+//       if (discountedData?.status === 200) {
+//         if (userProfile?.coupon && Array.isArray(userProfile?.coupon)) {
+//           userProfile?.coupon.push(discountedData?.couponCode);
+//         } else {
+//           userProfile.coupon = [discountedData?.couponCode];
+//         }
+//         await profileCollection.updateOne(
+//           { email: email },
+//           { $set: { coupon: userProfile.coupon } }
+//         );
+//       }
+
+//       // Clean the cart
+//       const productsToRemove = CheckkedProdcuts_DataWithProductDetail.map((i) => i?.productId);
+//       // await cartCollection.updateOne({ email: email },
+//       //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
+
+//       return res.status(200).send({ orderData: newOrder });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).send({ msg: "error" });
+//   }
+// });
+
+
+
+
+
+      // Update orderType and transactionId for an existing order
+      app.put("/updateOrder/:orderId", verifyJWT, async (req, res) => {
+        const decodedEmail = req.data;
+        const email = req.query.email;
+        const orderId = req.params.orderId;
+        console.log(orderId)
+        const { orderType, transactionId } = req.body;
+        console.log(orderType, transactionId)
+      
+        try {
+          if (decodedEmail !== email) {
+            res.status(401).send({ message: "Unauthorized access from this email" });
+            return;
+          }
+      
+          // Check if the order exists for the given orderId
+          const existingOrder = await ordersCollection.findOne({ _id: orderId });
+          console.log(existingOrder)
+      
+          if (!existingOrder) {
+            res.status(404).send({ message: "Order not found" });
+            return;
+          }
+      
+          // Ensure that the order belongs to the authorized user
+          if (existingOrder.userId !== decodedEmail) {
+            res.status(401).send({ message: "Unauthorized access to this order" });
+            return;
+          }
+      
+          // Update the existing order with orderType and transactionId
+          const updateResult = await ordersCollection.updateOne(
+            { _id: orderId },
+            { $set: { orderType: orderType, transactionId: transactionId } }
+          );
+
+          console.log(updateResult)
+      
+          if (updateResult.modifiedCount === 0) {
+            res.status(400).send({ message: "Order update failed" });
+            return;
+          }
+      
+          res.status(200).send({ message: "Order updated successfully" });
+        } catch (error) {
+          console.error(error);
+          res.status(500).send({ msg: "Error" });
+        }
+      });
+      
+
+
+
+      // Define a route to get all orders
+app.get("/orders", async (req, res) => {
+  try {
+    // Query the ordersCollection to retrieve all orders
+    const allOrders = await ordersCollection.find({}).toArray();
+
+    // Return the list of orders in the response
+    return res.status(200).send({ orders: allOrders });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({ msg: "Error retrieving orders" });
+  }
+});
+
 
     // ________________ PAYMENT For ORDER ___________________
 
@@ -1447,7 +1664,14 @@ async function run() {
         const orderData = await ordersCollection.findOne({ _id: new ObjectId(_orderID) });
         console.log(orderData);
         if (orderData) {
-          res.status(200).send({ productLength : orderData?.orderedItems.length , totalAmount  : orderData?.finalAmount});
+          if(orderData?.typeOfPayment){
+            res.status(403).send({ message: "Payment has already been made. You cannot modify the order." })
+            return;
+          }
+          else
+          {
+            res.status(200).send({ productLength : orderData?.orderedItems.length , totalAmount  : orderData?.finalAmount});
+          }
         } else {
           res.status(404).send({ message: "not found" })
         }
@@ -1689,7 +1913,7 @@ async function run() {
       verifyJWT,
       verifyAdmin,
       async (req, res) => {
-        const result = await paymentCollection.find().toArray();
+        const result = await ordersCollection.find().toArray();
         console.log(result);
         res.send(result);
       }
