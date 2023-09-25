@@ -1383,7 +1383,8 @@ async function run() {
             productId: i?.productId,
             productName: i?.productTitle,
             productPrice: i?.price,
-            productQuantity: i?.quantity
+            productQuantity: i?.quantity,
+            productImage: i?.image
           }
         })
 
