@@ -26,6 +26,17 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+function checkPermission(allowedRoles) {
+  return (req, res, next) => {
+    const user = req.data;
+    console.log(user?.role, allowedRoles, req.path)
+    if (!user || !user.role || !allowedRoles.includes(user.role)) {
+      return res.sendStatus(403); // Forbidden
+    }
+    next();
+  };
+}
+
 const verifyJWT = (req, res, next) => {
   const token = req.cookies._et;
   // console.log(req.query, token)
@@ -38,7 +49,7 @@ const verifyJWT = (req, res, next) => {
       return res.status(403).json({ message: "Invalid token." });
     }
     // console.log(decodedToken)
-    req.data = decodedToken.email; // Assuming the email is stored in the token's payload
+    req.data = decodedToken; // Assuming the email is stored in the token's payload
     next();
   });
 };
@@ -81,10 +92,11 @@ async function run() {
     const cartCollection = client.db("e-mart").collection("carts");
     const paymentCollection = client.db("e-mart").collection("payments");
 
-    app.post("/jwt", (req, res) => {
+    app.post("/jwt", async (req, res) => {
       const user = req.body;
+      const userData = await userCollection.findOne({email: user?.email})
       const token = jwt.sign(
-        { email: user.email },
+        { email: user.email , role: userData?.role},
         process.env.ACCESS_TOKEN_SECRET
       );
 
@@ -112,7 +124,7 @@ async function run() {
     });
 
     const verifyAdmin = async (req, res, next) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = decodedEmail;
       // console.log(email)
       const query = { email: email };
@@ -126,17 +138,36 @@ async function run() {
       next();
     };
 
-    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/users", verifyJWT, checkPermission(['admin']),  async (req, res) => {
       const result = await userCollection.find().toArray();
-      console.log(result);
+      //console.log(result);
       res.send(result);
+    });
+
+    app.patch("/admin/admin-list/:userId/edit-role", verifyJWT, checkPermission(['admin']),  async (req, res) => {
+      try{
+        const data = req.body;
+        const userId = req.params.userId;
+        console.log(userId)
+        const user = await userCollection.findOne({_id: new ObjectId(userId)});
+        console.log("user --", user)
+        if(!user){
+          return res.status(404).send({message: "User not found"})
+        }
+        const result = await userCollection.updateOne({_id: new ObjectId(userId)}, {$set: {role: (data?.role ? data?.role : "user")}})
+        //const updatedUser = await userCollection.findOne({id: new ObjectId(userId)});
+        res.status(200).send(result)
+      }
+      catch{
+
+      }
     });
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      console.log(user);
+      //console.log(user);
       const query = { email: user.email };
-      console.log(query);
+      //console.log(query);
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "user already exists" });
@@ -147,7 +178,7 @@ async function run() {
 
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       if (decodedEmail !== email) {
         res.send({ admin: false });
       }
@@ -172,6 +203,8 @@ async function run() {
       res.send(result);
     });
 
+
+
     // ----------------------------------Upload Profile------------------------------
 
     app.get("/get-profile/:email", verifyJWT, async (req, res) => {
@@ -183,6 +216,24 @@ async function run() {
 
         if (userProfile) {
           res.status(200).json(userProfile);
+        } else {
+          res.status(404).json({ message: "User profile not found" });
+        }
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+    
+    app.get("/get-user-role/:email", async (req, res) => {
+      const email = req?.params?.email;
+      //console.log('/get-user-role')
+      // Get the user's profile based on their email
+      try {
+        const userProfile = await userCollection.findOne({ email: email });
+
+        if (userProfile) {
+          res.status(200).json({user: userProfile});
         } else {
           res.status(404).json({ message: "User profile not found" });
         }
@@ -254,13 +305,13 @@ async function run() {
       }
     });
 
-    app.post("/products", verifyJWT, verifyAdmin, async (req, res) => {
+    app.post("/products", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
       const newProduct = req.body;
       const result = await productsCollection.insertOne(newProduct);
       res.send(result);
     });
 
-    app.patch("/products/:id", verifyJWT, async (req, res) => {
+    app.patch("/products/:id", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
       const productIdToUpdate = req.params.productId;
       const { rating, comment } = req.body;
 
@@ -379,7 +430,7 @@ async function run() {
       }
     });
 
-    app.post("/categories", verifyJWT, verifyAdmin, async (req, res) => {
+    app.post("/categories", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
       const newCategory = req.body;
       console.log(newCategory, "new");
       const exist = await categoryCollection.findOne({
@@ -395,8 +446,7 @@ async function run() {
 
     app.patch(
       "/upload-category/:slug",
-      verifyJWT,
-      verifyAdmin,
+      verifyJWT, checkPermission(['admin', 'Product Manager']),
       async (req, res) => {
         const categorySlugToUpdate = req.params.slug;
         const {
@@ -884,7 +934,7 @@ async function run() {
 
     //Get user's cart with product details
     app.get("/get-wish-list", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
 
       if (decodedEmail !== email) {
@@ -931,7 +981,7 @@ async function run() {
 
     // Add item to cart
     app.post("/add-to-wish-list", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       // console.log(decodedEmail);
       const { email, productId, quantity, checked } = req.body;
 
@@ -1019,7 +1069,7 @@ async function run() {
 
     //Get user's cart with product details
     app.get("/get-cart", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
 
       if (decodedEmail !== email) {
@@ -1087,7 +1137,7 @@ async function run() {
 
     // Add item to cart
     app.post("/add-to-cart", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       // console.log(decodedEmail);
       const { email, productId, quantity, checked } = req.body;
 
@@ -1136,7 +1186,7 @@ async function run() {
 
     // Update cart product with new quantity and checked status
     app.put("/update-cart-product/:email", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const { email, productId, quantity, checked } = req.body;
       // console.log(email, productId, quantity, checked, 9);
 
@@ -1189,7 +1239,7 @@ async function run() {
       async (req, res) => {
         const { email, productId } = req.params;
 
-        const decodedEmail = req.data;
+        const decodedEmail = req.data?.email;
 
         try {
           if (decodedEmail !== email) {
@@ -1317,7 +1367,7 @@ async function run() {
     };
 
     app.get("/checkout", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
 
       if (decodedEmail !== email) {
@@ -1346,7 +1396,7 @@ async function run() {
 
     // //place order
     app.post("/checkout", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
       const { couponName } = req.body;
       try {
@@ -1442,7 +1492,7 @@ async function run() {
 
 
       app.patch("/payment/:orderId", verifyJWT, async(req, res) => {
-        const decodedEmail = req.data;
+        const decodedEmail = req.data?.email;
       const email = req.query.email;
       const {orderId} = req.params;
       // const data = req.body;
@@ -1590,7 +1640,7 @@ async function run() {
 
       // Update orderType and transactionId for an existing order
       app.put("/updateOrder/:orderId", verifyJWT, async (req, res) => {
-        const decodedEmail = req.data;
+        const decodedEmail = req.data?.email;
         const email = req.query.email;
         const orderId = req.params.orderId;
         console.log(orderId)
@@ -1642,7 +1692,7 @@ async function run() {
 
 
       // Define a route to get all orders
-app.get("/orders", async (req, res) => {
+app.get("/orders", verifyJWT, async (req, res) => {
   try {
     // Query the ordersCollection to retrieve all orders
     const allOrders = await ordersCollection.find({}).toArray();
@@ -1662,7 +1712,7 @@ app.get("/orders", async (req, res) => {
       try {
         const _orderID = req.query._orderID;
         const email = req.query.email;
-        const decodedEmail = req.data;
+        const decodedEmail = req.data?.email;
         if (decodedEmail !== email) {
           res.status(409).send({ message: "unauthorized" });
           return;
@@ -1789,7 +1839,7 @@ app.get("/orders", async (req, res) => {
     };
 
     app.post("/get-discount-by-coupon", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
 
       const { couponName } = req.body;
@@ -1835,7 +1885,7 @@ app.get("/orders", async (req, res) => {
       if (!email) {
         res.status(401).send([]);
       }
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       console.log(req.data);
       console.log(5, decodedEmail);
       if (email !== decodedEmail) {
@@ -1861,19 +1911,44 @@ app.get("/orders", async (req, res) => {
 
     app.get(
       "/get-all-ordered-products",
-      verifyJWT,
-      verifyAdmin,
+      verifyJWT, checkPermission(['admin', 'Order Manager']),
       async (req, res) => {
-        const result = await ordersCollection.find().toArray();
-        console.log(result);
-        res.send(result);
+        const query = req.query?.q;
+        const size = parseInt(req.query.size);
+        const currentPage = parseInt(req.query.currentPage);
+        //console.log(query, size, currentPage)
+        let count = 0;
+        if(query){
+
+        }
+        let result = []
+        if(query){
+          result = await ordersCollection.find({
+            $or: [
+              
+              { userPhone: { $regex: query, $options: 'i' } },
+            ],
+          }).sort({_id: -1}).skip(currentPage * size)
+          .limit(size).toArray();
+          count = await ordersCollection.countDocuments({
+            $or: [
+              
+              { userPhone: { $regex: query, $options: 'i' } },
+            ],
+          });
+          return res.send({orders: result, count: count});
+        }
+        count = await ordersCollection.estimatedDocumentCount();
+        result = await ordersCollection.find().sort({_id: -1}).skip(currentPage * size)
+        .limit(size).toArray();
+        //console.log(result);
+        res.send({orders: result, count: count});
       }
     );
 
     app.get(
       "/get-all-user-profile",
-      verifyJWT,
-      verifyAdmin,
+      verifyJWT, checkPermission(['admin']),
       async (req, res) => {
         const result = await profileCollection.find().toArray();
         console.log(result);
@@ -1881,14 +1956,14 @@ app.get("/orders", async (req, res) => {
       }
     );
 
-    app.delete("/products/:id", async (req, res) => {
+    app.delete("/products/:id", verifyJWT, checkPermission(['admin', 'Product Manager']),  async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
 
-    app.delete("/categories/:id", async (req, res) => {
+    app.delete("/categories/:id", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await categoryCollection.deleteOne(query);
@@ -1898,14 +1973,14 @@ app.get("/orders", async (req, res) => {
 
     //----------------------------------order detail-------------------------------------
 
-
+    //user order detail get
     app.get("/order-details", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const _orderId = req.query._id;
       if (!email) {
         res.status(401).send([]);
       }
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       if (email !== decodedEmail) {
         return res.status(401).send({ error: true, message: "unauthorized" });
       }
@@ -1933,7 +2008,7 @@ app.get("/orders", async (req, res) => {
 
 
 
-    ////order details
+    ////order details view for user
     app.get("/order-detail-view/:_orderId", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const _orderId = req.params._orderId;
@@ -1941,7 +2016,7 @@ app.get("/orders", async (req, res) => {
       if (!email) {
         res.status(401).send([]);
       }
-      const decodedEmail = req.data;
+      const decodedEmail = req.data?.email;
       if (email !== decodedEmail) {
         return res.status(401).send({ error: true, message: "unauthorized" });
       }
