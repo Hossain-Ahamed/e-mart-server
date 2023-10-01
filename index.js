@@ -2239,32 +2239,6 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
     })
 
-    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      
-      const orderId = req.body?.id
-
-      if(!orderId){
-        return res.status(404).send({message: "Invalid Request!"})
-      }
-      try{
-        const OTP = await generateOTP();
-        const newStatus = {
-          name: "Ready To Delivery",
-          message: `${req.body?.message}`,
-          time: new Date().toISOString(),
-        };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{OTP: OTP} ,$push:{orderStatus: newStatus}} )
-
-        res.status(200).send({ orderData: result });
-      }
-      catch{
-        e => {
-          res.status(500).send({ message: "error in server" })
-        }
-      }
-
-    })
-
     app.patch("/status-to-delivered", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const OTP = req.body?.OTP;
       const orderId = req.body?.id;
