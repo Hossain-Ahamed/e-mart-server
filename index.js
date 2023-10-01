@@ -1970,7 +1970,9 @@ app.get("/orders", verifyJWT, async (req, res) => {
             finalAmount: 1,
             orderStatus: 1,
             typeOfPayment: 1,
-            deliveryPartner: 1
+            deliveryPartner: 1,
+            userAddress : 1
+ 
           }).toArray();
           count = await ordersCollection.countDocuments({
             $or: [
@@ -2087,11 +2089,10 @@ app.get("/orders", verifyJWT, async (req, res) => {
     ///order detail view for admin
     app.get("/for-admin/order-detail-view/:_orderId", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const _orderId = req.params._orderId;
-      //console.log(_orderId);
+      console.log(_orderId);
       
       try{
-        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)} , {projection: {
-          
+        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)} , {projection: {    
           _id: 1,
           userId: 1,
           userCity: 1,
@@ -2104,9 +2105,13 @@ app.get("/orders", verifyJWT, async (req, res) => {
           finalAmount: 1,
           orderStatus: 1,
           typeOfPayment: 1,
-          deliveryPartner: 1
+          deliveryPartner: 1,
+          userAddress : 1
         }});
-        //console.log(result)
+
+
+        const userName = await profileCollection.findOne({_id: result?.userId},{projection : {name : 1}})
+        result.name = userName?.name;
         res.status(200).send({details: result})
       }
       catch{
@@ -2239,31 +2244,7 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
     })
 
-    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      
-      const orderId = req.body?.id
 
-      if(!orderId){
-        return res.status(404).send({message: "Invalid Request!"})
-      }
-      try{
-        const OTP = await generateOTP();
-        const newStatus = {
-          name: "Ready To Delivery",
-          message: `${req.body?.message}`,
-          time: new Date().toISOString(),
-        };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{OTP: OTP} ,$push:{orderStatus: newStatus}} )
-
-        res.status(200).send({ orderData: result });
-      }
-      catch{
-        e => {
-          res.status(500).send({ message: "error in server" })
-        }
-      }
-
-    })
 
     app.patch("/status-to-delivered", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const OTP = req.body?.OTP;
@@ -2287,6 +2268,27 @@ app.get("/orders", verifyJWT, async (req, res) => {
         };
         const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{status: "Delivered"} ,$push:{orderStatus: newStatus}} )
 
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    /// change order ammount total amount and discounted ammount
+    app.patch("/change-order-total-ammount", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const id = req.body?.id;
+      const finalAmount = req.body?.finalAmount;
+      const discountedAmount = req.body?.discountedAmount;
+      
+
+      try{
+  
+        const result = await ordersCollection.updateOne({_id: new ObjectId(id)}, {$set:{finalAmount: finalAmount, discountedAmount:discountedAmount}})
         res.status(200).send({ orderData: result });
       }
       catch{
