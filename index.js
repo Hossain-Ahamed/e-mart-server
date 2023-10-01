@@ -415,17 +415,20 @@ async function run() {
       res.send(categories);
     });
 
-    app.get("/categories/:id", async (req, res) => {
-      const id = req.params.id;
+    app.get("/categories/:slug", async (req, res) => {
+      const slug = req.params.slug;
       try {
-        const query = { _id: new ObjectId(id) };
+        const query = { slug: slug };
         const category = await categoryCollection.findOne(query);
-        if (category) {
-          res.send(category);
-        } else {
-          res.status(404).send({ message: "Category not found." });
-        }
-      } catch (error) {
+
+        if (!category) {
+          return res.status(404).send({ message: "Category not found." });
+          
+        } 
+        const subCategories = await subCategoryCollection.find({category: category?.name}).toArray()
+        //console.log(subCategories)
+          res.send({category: category, subcategory: subCategories});
+        } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
@@ -478,13 +481,17 @@ async function run() {
           if (topLeftBannerLayout2) {
             updateFields.$push = { topLeftBannerLayout2 };
           }
-          if ((slimBannerImage, headingsSlim, titleSlim, offerSlim)) {
-            updateFields.$push = {
+          if (slimBannerImage || headingsSlim || titleSlim || offerSlim) {
+            // Create an array with the values
+            const slimBannerData = {
               slimBannerImage,
               headingsSlim,
               titleSlim,
               offerSlim,
             };
+    
+            // Use $push to append the slimBannerData object to the existing array
+            updateFields.$push = { slimBanners: slimBannerData };
           }
           if (bottomBannerImage) {
             updateFields.$push = { bottomBannerImage };
@@ -685,13 +692,34 @@ async function run() {
       res.send(subCategory);
     });
 
+    app.get("/sub-categories", async (req, res) => {
+      const categoryName = req.query.category; // Get the category name from the query parameter
+    
+      try {
+        let query = {}; // Default query to retrieve all subcategories
+    
+        if (categoryName) {
+          // If a category name is provided, filter by it
+          query = { category: categoryName };
+        }
+    
+        const subCategories = await subCategoryCollection.find(query).toArray();
+    
+        res.status(200).json(subCategories);
+      } catch (error) {
+        console.error("Error retrieving subcategories:", error);
+        res.status(500).json({ message: "Error retrieving subcategories." });
+      }
+    });
+    
+
     app.post(
       "/upload-sub-category",
       verifyJWT,
       verifyAdmin,
       async (req, res) => {
         const newSubCategory = req.body;
-        console.log(newSubCategory, "new");
+        //console.log(newSubCategory, "new");
         const exist = await subCategoryCollection.findOne({
           slug: newSubCategory?.slug,
         });
@@ -1911,7 +1939,7 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
     app.get(
       "/get-all-ordered-products",
-      verifyJWT, checkPermission(['admin', 'Order Manager']),
+      verifyJWT, checkPermission(['admin', 'Order Manager', 'Delivery Partner']),
       async (req, res) => {
         const query = req.query?.q;
         const size = parseInt(req.query.size);
@@ -1929,7 +1957,21 @@ app.get("/orders", verifyJWT, async (req, res) => {
               { userPhone: { $regex: query, $options: 'i' } },
             ],
           }).sort({_id: -1}).skip(currentPage * size)
-          .limit(size).toArray();
+          .limit(size)
+          .project({
+            _id: 1,
+            userId: 1,
+            userCity: 1,
+            userPhone: 1,
+            coupon: 1,
+            subTotalAmount: 1,
+            discountedAmount: 1,
+            courirerCharge: 1,
+            finalAmount: 1,
+            orderStatus: 1,
+            typeOfPayment: 1,
+            deliveryPartner: 1
+          }).toArray();
           count = await ordersCollection.countDocuments({
             $or: [
               
@@ -1969,6 +2011,13 @@ app.get("/orders", verifyJWT, async (req, res) => {
       const result = await categoryCollection.deleteOne(query);
       res.send(result);
     });
+
+    // app.delete("/categories/:topRightBannerLayout2", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
+    //   const topRightBannerLayout2 = req.query.topRightBannerLayout2;
+    //   const query = { _id: new ObjectId(id) };
+    //   const result = await categoryCollection.deleteOne(query);
+    //   res.send(result);
+    // });
 
 
     //----------------------------------order detail-------------------------------------
@@ -2025,6 +2074,237 @@ app.get("/orders", verifyJWT, async (req, res) => {
         const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)});
         //console.log(result)
         res.status(200).send({details: result})
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    ///order detail view for admin
+    app.get("/for-admin/order-detail-view/:_orderId", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const _orderId = req.params._orderId;
+      //console.log(_orderId);
+      
+      try{
+        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)} , {projection: {
+          
+          _id: 1,
+          userId: 1,
+          userCity: 1,
+          userPhone: 1,
+          coupon: 1,
+          orderedItems: 1,
+          subTotalAmount: 1,
+          discountedAmount: 1,
+          courirerCharge: 1,
+          finalAmount: 1,
+          orderStatus: 1,
+          typeOfPayment: 1,
+          deliveryPartner: 1
+        }});
+        //console.log(result)
+        res.status(200).send({details: result})
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    ///-------------------------------------------Admin Status Change ----------------------------///////////
+
+    ///GET DELIVERY PARTNER
+    app.get("/get-delivery-partner", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      
+      try{
+        const deliveryPartner =  await userCollection.find({role: "Delivery Partner"}).toArray();
+        //console.log(result)
+        res.status(200).send({deliveryPartner: deliveryPartner})
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    app.patch("/status-processing-to-processed", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const orderId = req.body?.id
+
+      if(!orderId){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+        const newStatus = {
+          name: "Processed And Ready to Ship",
+          message: `${req.body?.message}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$push:{orderStatus: newStatus}} )
+
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    app.patch("/status-processed-to-shipped", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const deliveryMan = req.body?.deliveryPartner;
+      
+      const orderId = req.body?.id
+
+      if(!orderId || !deliveryMan){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+        const newStatus = {
+          name: "Shipped",
+          message: `${req.body?.message}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{deliveryPartner: deliveryMan} ,$push:{orderStatus: newStatus}} )
+
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+    app.patch("/status-back-to-processed", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const orderId = req.body?.id
+
+      if(!orderId){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+       
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$pull:{orderStatus: {name: "Processed And Ready to Ship"}}} )
+
+        res.status(200).send(true);
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+    const generateOTP = () => {
+      const characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      return Array.from({ length: 6 }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+  }
+
+    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      
+      const orderId = req.body?.id
+
+      if(!orderId){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+        const OTP = await generateOTP();
+        const newStatus = {
+          name: "Ready To Delivery",
+          message: `${req.body?.message}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{OTP: OTP} ,$push:{orderStatus: newStatus}} )
+
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      
+      const orderId = req.body?.id
+
+      if(!orderId){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+        const OTP = await generateOTP();
+        const newStatus = {
+          name: "Ready To Delivery",
+          message: `${req.body?.message}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{OTP: OTP} ,$push:{orderStatus: newStatus}} )
+
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+    app.patch("/status-to-delivered", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const OTP = req.body?.OTP;
+      const orderId = req.body?.id;
+
+      if(!orderId || !OTP){
+        return res.status(404).send({message: "Invalid Request!"})
+      }
+      try{
+        const orderDeliver = await ordersCollection.findOne({_id: new ObjectId(orderId)} , {projection: { 
+          _id: 1,
+          OTP: 1
+        }})
+        if(orderDeliver?.OTP !== OTP){
+          return res.status(422).send({message: "Wrong OTP!"})
+        }
+        const newStatus = {
+          name: "Delivered",
+          message: `${req.body?.message}`,
+          time: new Date().toISOString(),
+        };
+        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{status: "Delivered"} ,$push:{orderStatus: newStatus}} )
+
+        res.status(200).send({ orderData: result });
+      }
+      catch{
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+
+    app.get("/get-delivery-partner", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      
+      try{
+        const deliveryPartner =  await userCollection.find({role: "Delivery Partner"}).toArray();
+        //console.log(result)
+        res.status(200).send({deliveryPartner: deliveryPartner})
       }
       catch{
         e => {
