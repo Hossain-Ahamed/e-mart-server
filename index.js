@@ -94,9 +94,9 @@ async function run() {
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const userData = await userCollection.findOne({email: user?.email})
+      const userData = await userCollection.findOne({ email: user?.email })
       const token = jwt.sign(
-        { email: user.email , role: userData?.role},
+        { email: user.email, role: userData?.role },
         process.env.ACCESS_TOKEN_SECRET
       );
 
@@ -138,27 +138,27 @@ async function run() {
       next();
     };
 
-    app.get("/users", verifyJWT, checkPermission(['admin']),  async (req, res) => {
+    app.get("/users", verifyJWT, checkPermission(['admin']), async (req, res) => {
       const result = await userCollection.find().toArray();
       //console.log(result);
       res.send(result);
     });
 
-    app.patch("/admin/admin-list/:userId/edit-role", verifyJWT, checkPermission(['admin']),  async (req, res) => {
-      try{
+    app.patch("/admin/admin-list/:userId/edit-role", verifyJWT, checkPermission(['admin']), async (req, res) => {
+      try {
         const data = req.body;
         const userId = req.params.userId;
         console.log(userId)
-        const user = await userCollection.findOne({_id: new ObjectId(userId)});
+        const user = await userCollection.findOne({ _id: new ObjectId(userId) });
         console.log("user --", user)
-        if(!user){
-          return res.status(404).send({message: "User not found"})
+        if (!user) {
+          return res.status(404).send({ message: "User not found" })
         }
-        const result = await userCollection.updateOne({_id: new ObjectId(userId)}, {$set: {role: (data?.role ? data?.role : "user")}})
+        const result = await userCollection.updateOne({ _id: new ObjectId(userId) }, { $set: { role: (data?.role ? data?.role : "user") } })
         //const updatedUser = await userCollection.findOne({id: new ObjectId(userId)});
         res.status(200).send(result)
       }
-      catch{
+      catch {
 
       }
     });
@@ -224,7 +224,7 @@ async function run() {
         res.status(500).json({ message: "Internal server error" });
       }
     });
-    
+
     app.get("/get-user-role/:email", async (req, res) => {
       const email = req?.params?.email;
       //console.log('/get-user-role')
@@ -233,7 +233,7 @@ async function run() {
         const userProfile = await userCollection.findOne({ email: email });
 
         if (userProfile) {
-          res.status(200).json({user: userProfile});
+          res.status(200).json({ user: userProfile });
         } else {
           res.status(404).json({ message: "User profile not found" });
         }
@@ -423,12 +423,12 @@ async function run() {
 
         if (!category) {
           return res.status(404).send({ message: "Category not found." });
-          
-        } 
-        const subCategories = await subCategoryCollection.find({category: category?.name}).toArray()
+
+        }
+        const subCategories = await subCategoryCollection.find({ category: category?.name }).toArray()
         //console.log(subCategories)
-          res.send({category: category, subcategory: subCategories});
-        } catch (error) {
+        res.send({ category: category, subcategory: subCategories });
+      } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
@@ -489,7 +489,7 @@ async function run() {
               titleSlim,
               offerSlim,
             };
-    
+
             // Use $push to append the slimBannerData object to the existing array
             updateFields.$push = { slimBanners: slimBannerData };
           }
@@ -694,24 +694,24 @@ async function run() {
 
     app.get("/sub-categories", async (req, res) => {
       const categoryName = req.query.category; // Get the category name from the query parameter
-    
+
       try {
         let query = {}; // Default query to retrieve all subcategories
-    
+
         if (categoryName) {
           // If a category name is provided, filter by it
           query = { category: categoryName };
         }
-    
+
         const subCategories = await subCategoryCollection.find(query).toArray();
-    
+
         res.status(200).json(subCategories);
       } catch (error) {
         console.error("Error retrieving subcategories:", error);
         res.status(500).json({ message: "Error retrieving subcategories." });
       }
     });
-    
+
 
     app.post(
       "/upload-sub-category",
@@ -1432,7 +1432,7 @@ async function run() {
           res
             .status(401)
             .send({ message: "unauthorized access from this email" });
-            return;
+          return;
         }
 
         //get user profile
@@ -1479,7 +1479,7 @@ async function run() {
           finalAmount: Math.ceil(total + courirerCharge - discountedData?.discountedAmmount),
           orderStatus: [{ name: "Payment Pending", message: "N/A", time: new Date().toISOString() }],
           orderedItems: tempProducts,
-          
+
         }
 
         //insert order data
@@ -1487,12 +1487,6 @@ async function run() {
 
         console.log("New Order:", newOrder);
 
-        // const updateResult = await ordersCollection.updateOne(
-        //   { _id: newOrder._id },
-        //   { $set: { orderType: orderType } }
-        // );
-        
-        // console.log("Update Result:", updateResult);
 
         //add coupon to profile
         if (discountedData?.status === 200) {
@@ -1505,233 +1499,240 @@ async function run() {
         }
 
 
+
+        //subtract from stock 
+        if(newOrder?.insertedId &&  newOrder?.acknowledged){
+          await updateProductQuantitiesByOrder(newOrder?.insertedId, "subtract")
+        }
+
+
         //clean the cart
         const productsToRemove = CheckkedProdcuts_DataWithProductDetail.map(i => i?.productId)
-        // await cartCollection.updateOne({ email: email },
-        //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
+        await cartCollection.updateOne({ email: email },
+          { $pull: { cart: { productId: { $in: productsToRemove } } } })
 
 
-          return res.status(200).send({ orderData: newOrder });
-        } catch (error) {
-          console.error(error);
-          return res.status(500).send({ msg: "error" });
-        }
-      });
+        return res.status(200).send({ orderData: newOrder });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).send({ msg: "error" });
+      }
+    });
 
 
-      app.patch("/payment/:orderId", verifyJWT, async(req, res) => {
-        const decodedEmail = req.data?.email;
+    app.patch("/payment/:orderId", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data?.email;
       const email = req.query.email;
-      const {orderId} = req.params;
+      const { orderId } = req.params;
       // const data = req.body;
       try {
         if (decodedEmail !== email) {
           res
             .status(401)
             .send({ message: "unauthorized access from this email" });
-            return;
+          return;
         }
         const newStatus = {
           name: "Processing",
           message: `Payment has been confirmed through ${req.body?.typeOfPayment}`,
           time: new Date().toISOString(),
         };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:req.body, $push:{orderStatus: newStatus}} )
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $set: req.body, $push: { orderStatus: newStatus } })
 
         res.status(200).send({ orderData: result });
-         
-       
-      } catch{
-        res.status(500).send({message: "internal server error!"})
+
+
+      } catch {
+        res.status(500).send({ message: "internal server error!" })
       }
-      })
+    })
 
 
     // ...
 
-// ...
+    // ...
 
-// ...
+    // ...
 
-// app.post("/checkout", verifyJWT, async (req, res) => {
-//   const decodedEmail = req.data;
-//   const email = req.query.email;
-//   const { couponName, orderType } = req.body;
-//   try {
-//     if (decodedEmail !== email) {
-//       res.status(401).send({ message: "unauthorized access from this email" });
-//       return;
-//     }
+    // app.post("/checkout", verifyJWT, async (req, res) => {
+    //   const decodedEmail = req.data;
+    //   const email = req.query.email;
+    //   const { couponName, orderType } = req.body;
+    //   try {
+    //     if (decodedEmail !== email) {
+    //       res.status(401).send({ message: "unauthorized access from this email" });
+    //       return;
+    //     }
 
-//     // Get user profile
-//     const userProfile = await profileCollection.findOne({ email: email });
+    //     // Get user profile
+    //     const userProfile = await profileCollection.findOne({ email: email });
 
-//     const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(
-//       email
-//     );
-//     const total = await sumOfTotalProductPrice_Checked(
-//       CheckkedProdcuts_DataWithProductDetail
-//     );
+    //     const CheckkedProdcuts_DataWithProductDetail = await getcartDataWithProductDetail_CHECKED(
+    //       email
+    //     );
+    //     const total = await sumOfTotalProductPrice_Checked(
+    //       CheckkedProdcuts_DataWithProductDetail
+    //     );
 
-//     const discountedData = { discountedAmmount: 0.0, couponCode: "N/A", status: 500 };
+    //     const discountedData = { discountedAmmount: 0.0, couponCode: "N/A", status: 500 };
 
-//     if (couponName) {
-//       const { status, data } = await calculateDiscountByCoupon(couponName, email);
-//       if (status === 200) {
-//         discountedData.couponCode = data?.couponCode;
-//         discountedData.discountedAmmount = data?.discountedAmmount;
-//         discountedData.status = status;
-//       }
-//     }
+    //     if (couponName) {
+    //       const { status, data } = await calculateDiscountByCoupon(couponName, email);
+    //       if (status === 200) {
+    //         discountedData.couponCode = data?.couponCode;
+    //         discountedData.discountedAmmount = data?.discountedAmmount;
+    //         discountedData.status = status;
+    //       }
+    //     }
 
-//     // DELIVERY CHARGE
-//     let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
-//     const courirerCharge = await getCourierCharge(defaultDeliveryCharge, total);
+    //     // DELIVERY CHARGE
+    //     let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
+    //     const courirerCharge = await getCourierCharge(defaultDeliveryCharge, total);
 
-//     const tempProducts = CheckkedProdcuts_DataWithProductDetail.map((i) => {
-//       return {
-//         productId: i?.productId,
-//         productName: i?.productTitle,
-//         productPrice: i?.price,
-//         productQuantity: i?.quantity,
-//       };
-//     });
+    //     const tempProducts = CheckkedProdcuts_DataWithProductDetail.map((i) => {
+    //       return {
+    //         productId: i?.productId,
+    //         productName: i?.productTitle,
+    //         productPrice: i?.price,
+    //         productQuantity: i?.quantity,
+    //       };
+    //     });
 
-//     // Check if an order with the same user and status "Payment Pending" exists
-//     const existingOrder = await ordersCollection.findOne({
-//       userId: userProfile?._id,
-//       "orderStatus.name": "Payment Pending",
-//     });
+    //     // Check if an order with the same user and status "Payment Pending" exists
+    //     const existingOrder = await ordersCollection.findOne({
+    //       userId: userProfile?._id,
+    //       "orderStatus.name": "Payment Pending",
+    //     });
 
-//     if (existingOrder) {
-//       // Update the existing order's orderType
-//       await ordersCollection.updateOne(
-//         { _id: existingOrder._id },
-//         { $set: { orderType: orderType } }
-//       );
+    //     if (existingOrder) {
+    //       // Update the existing order's orderType
+    //       await ordersCollection.updateOne(
+    //         { _id: existingOrder._id },
+    //         { $set: { orderType: orderType } }
+    //       );
 
-//       return res.status(200).send({ orderData: existingOrder });
-//     } else {
-//       // Create a new order
-//       const insertionData = {
-//         userId: userProfile?._id,
-//         userAddress: userProfile?.address,
-//         userCity: userProfile?.city,
-//         userPhone: userProfile?.phone,
-//         coupon: discountedData?.couponCode,
-//         subTotalAmount: total,
-//         discountedAmount: discountedData?.discountedAmmount,
-//         courirerCharge: courirerCharge,
-//         finalAmount: Math.ceil(
-//           total + courirerCharge - discountedData?.discountedAmmount
-//         ),
-//         orderStatus: [
-//           { name: "Payment Pending", message: "N/A", time: new Date().toISOString() },
-//         ],
-//         orderedItems: tempProducts,
-//         orderType: orderType, // Add orderType here
-//       };
+    //       return res.status(200).send({ orderData: existingOrder });
+    //     } else {
+    //       // Create a new order
+    //       const insertionData = {
+    //         userId: userProfile?._id,
+    //         userAddress: userProfile?.address,
+    //         userCity: userProfile?.city,
+    //         userPhone: userProfile?.phone,
+    //         coupon: discountedData?.couponCode,
+    //         subTotalAmount: total,
+    //         discountedAmount: discountedData?.discountedAmmount,
+    //         courirerCharge: courirerCharge,
+    //         finalAmount: Math.ceil(
+    //           total + courirerCharge - discountedData?.discountedAmmount
+    //         ),
+    //         orderStatus: [
+    //           { name: "Payment Pending", message: "N/A", time: new Date().toISOString() },
+    //         ],
+    //         orderedItems: tempProducts,
+    //         orderType: orderType, // Add orderType here
+    //       };
 
-//       const newOrder = await ordersCollection.insertOne(insertionData);
+    //       const newOrder = await ordersCollection.insertOne(insertionData);
 
-//       console.log("New Order:", newOrder);
+    //       console.log("New Order:", newOrder);
 
-//       // Add coupon to profile
-//       if (discountedData?.status === 200) {
-//         if (userProfile?.coupon && Array.isArray(userProfile?.coupon)) {
-//           userProfile?.coupon.push(discountedData?.couponCode);
-//         } else {
-//           userProfile.coupon = [discountedData?.couponCode];
-//         }
-//         await profileCollection.updateOne(
-//           { email: email },
-//           { $set: { coupon: userProfile.coupon } }
-//         );
-//       }
+    //       // Add coupon to profile
+    //       if (discountedData?.status === 200) {
+    //         if (userProfile?.coupon && Array.isArray(userProfile?.coupon)) {
+    //           userProfile?.coupon.push(discountedData?.couponCode);
+    //         } else {
+    //           userProfile.coupon = [discountedData?.couponCode];
+    //         }
+    //         await profileCollection.updateOne(
+    //           { email: email },
+    //           { $set: { coupon: userProfile.coupon } }
+    //         );
+    //       }
 
-//       // Clean the cart
-//       const productsToRemove = CheckkedProdcuts_DataWithProductDetail.map((i) => i?.productId);
-//       // await cartCollection.updateOne({ email: email },
-//       //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
+    //       // Clean the cart
+    //       const productsToRemove = CheckkedProdcuts_DataWithProductDetail.map((i) => i?.productId);
+    //       // await cartCollection.updateOne({ email: email },
+    //       //   { $pull: { cart: { productId: { $in: productsToRemove } } } })
 
-//       return res.status(200).send({ orderData: newOrder });
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).send({ msg: "error" });
-//   }
-// });
-
-
+    //       return res.status(200).send({ orderData: newOrder });
+    //     }
+    //   } catch (error) {
+    //     console.error(error);
+    //     return res.status(500).send({ msg: "error" });
+    //   }
+    // });
 
 
 
-      // Update orderType and transactionId for an existing order
-      app.put("/updateOrder/:orderId", verifyJWT, async (req, res) => {
-        const decodedEmail = req.data?.email;
-        const email = req.query.email;
-        const orderId = req.params.orderId;
-        console.log(orderId)
-        const { orderType, transactionId } = req.body;
-        console.log(orderType, transactionId)
-      
-        try {
-          if (decodedEmail !== email) {
-            res.status(401).send({ message: "Unauthorized access from this email" });
-            return;
-          }
-      
-          // Check if the order exists for the given orderId
-          const existingOrder = await ordersCollection.findOne({ _id: orderId });
-          console.log(existingOrder)
-      
-          if (!existingOrder) {
-            res.status(404).send({ message: "Order not found" });
-            return;
-          }
-      
-          // Ensure that the order belongs to the authorized user
-          if (existingOrder.userId !== decodedEmail) {
-            res.status(401).send({ message: "Unauthorized access to this order" });
-            return;
-          }
-      
-          // Update the existing order with orderType and transactionId
-          const updateResult = await ordersCollection.updateOne(
-            { _id: orderId },
-            { $set: { orderType: orderType, transactionId: transactionId } }
-          );
 
-          console.log(updateResult)
-      
-          if (updateResult.modifiedCount === 0) {
-            res.status(400).send({ message: "Order update failed" });
-            return;
-          }
-      
-          res.status(200).send({ message: "Order updated successfully" });
-        } catch (error) {
-          console.error(error);
-          res.status(500).send({ msg: "Error" });
+
+    // Update orderType and transactionId for an existing order
+    app.put("/updateOrder/:orderId", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data?.email;
+      const email = req.query.email;
+      const orderId = req.params.orderId;
+      console.log(orderId)
+      const { orderType, transactionId } = req.body;
+      console.log(orderType, transactionId)
+
+      try {
+        if (decodedEmail !== email) {
+          res.status(401).send({ message: "Unauthorized access from this email" });
+          return;
         }
-      });
-      
+
+        // Check if the order exists for the given orderId
+        const existingOrder = await ordersCollection.findOne({ _id: orderId });
+        console.log(existingOrder)
+
+        if (!existingOrder) {
+          res.status(404).send({ message: "Order not found" });
+          return;
+        }
+
+        // Ensure that the order belongs to the authorized user
+        if (existingOrder.userId !== decodedEmail) {
+          res.status(401).send({ message: "Unauthorized access to this order" });
+          return;
+        }
+
+        // Update the existing order with orderType and transactionId
+        const updateResult = await ordersCollection.updateOne(
+          { _id: orderId },
+          { $set: { orderType: orderType, transactionId: transactionId } }
+        );
+
+        console.log(updateResult)
+
+        if (updateResult.modifiedCount === 0) {
+          res.status(400).send({ message: "Order update failed" });
+          return;
+        }
+
+        res.status(200).send({ message: "Order updated successfully" });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ msg: "Error" });
+      }
+    });
 
 
 
-      // Define a route to get all orders
-app.get("/orders", verifyJWT, async (req, res) => {
-  try {
-    // Query the ordersCollection to retrieve all orders
-    const allOrders = await ordersCollection.find({}).toArray();
 
-    // Return the list of orders in the response
-    return res.status(200).send({ orders: allOrders });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({ msg: "Error retrieving orders" });
-  }
-});
+    // Define a route to get all orders
+    app.get("/orders", verifyJWT, async (req, res) => {
+      try {
+        // Query the ordersCollection to retrieve all orders
+        const allOrders = await ordersCollection.find({}).toArray();
+
+        // Return the list of orders in the response
+        return res.status(200).send({ orders: allOrders });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).send({ msg: "Error retrieving orders" });
+      }
+    });
 
 
     // ________________ PAYMENT For ORDER ___________________
@@ -1748,13 +1749,12 @@ app.get("/orders", verifyJWT, async (req, res) => {
         const orderData = await ordersCollection.findOne({ _id: new ObjectId(_orderID) });
         console.log(orderData);
         if (orderData) {
-          if(orderData?.typeOfPayment){
+          if (orderData?.typeOfPayment) {
             res.status(403).send({ message: "Payment has already been made. You cannot modify the order." })
             return;
           }
-          else
-          {
-            res.status(200).send({ productLength : orderData?.orderedItems.length , totalAmount  : orderData?.finalAmount});
+          else {
+            res.status(200).send({ productLength: orderData?.orderedItems.length, totalAmount: orderData?.finalAmount });
           }
         } else {
           res.status(404).send({ message: "not found" })
@@ -1937,8 +1937,7 @@ app.get("/orders", verifyJWT, async (req, res) => {
       res.send({ insertResult });
     });
 
-    app.get(
-      "/get-all-ordered-products",
+    app.get("/get-all-ordered-products",
       verifyJWT, checkPermission(['admin', 'Order Manager', 'Delivery Partner']),
       async (req, res) => {
         const query = req.query?.q;
@@ -1946,47 +1945,48 @@ app.get("/orders", verifyJWT, async (req, res) => {
         const currentPage = parseInt(req.query.currentPage);
         //console.log(query, size, currentPage)
         let count = 0;
-        if(query){
+        if (query) {
 
         }
         let result = []
-        if(query){
+        if (query) {
           result = await ordersCollection.find({
             $or: [
-              
+
               { userPhone: { $regex: query, $options: 'i' } },
             ],
-          }).sort({_id: -1}).skip(currentPage * size)
-          .limit(size)
-          .project({
-            _id: 1,
-            userId: 1,
-            userCity: 1,
-            userPhone: 1,
-            coupon: 1,
-            subTotalAmount: 1,
-            discountedAmount: 1,
-            courirerCharge: 1,
-            finalAmount: 1,
-            orderStatus: 1,
-            typeOfPayment: 1,
-            deliveryPartner: 1,
-            userAddress : 1
- 
-          }).toArray();
+          }).sort({ _id: -1 }).skip(currentPage * size)
+            .limit(size)
+            .project({
+              _id: 1,
+              userId: 1,
+              userCity: 1,
+              userPhone: 1,
+              coupon: 1,
+              subTotalAmount: 1,
+              discountedAmount: 1,
+              courirerCharge: 1,
+              finalAmount: 1,
+              orderStatus: 1,
+              typeOfPayment: 1,
+              deliveryPartner: 1,
+              userAddress: 1,
+              status :1
+
+            }).toArray();
           count = await ordersCollection.countDocuments({
             $or: [
-              
+
               { userPhone: { $regex: query, $options: 'i' } },
             ],
           });
-          return res.send({orders: result, count: count});
+          return res.send({ orders: result, count: count });
         }
         count = await ordersCollection.estimatedDocumentCount();
-        result = await ordersCollection.find().sort({_id: -1}).skip(currentPage * size)
-        .limit(size).toArray();
+        result = await ordersCollection.find().sort({ _id: -1 }).skip(currentPage * size)
+          .limit(size).toArray();
         //console.log(result);
-        res.send({orders: result, count: count});
+        res.send({ orders: result, count: count });
       }
     );
 
@@ -2000,7 +2000,7 @@ app.get("/orders", verifyJWT, async (req, res) => {
       }
     );
 
-    app.delete("/products/:id", verifyJWT, checkPermission(['admin', 'Product Manager']),  async (req, res) => {
+    app.delete("/products/:id", verifyJWT, checkPermission(['admin', 'Product Manager']), async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await productsCollection.deleteOne(query);
@@ -2036,20 +2036,21 @@ app.get("/orders", verifyJWT, async (req, res) => {
         return res.status(401).send({ error: true, message: "unauthorized" });
       }
 
-      try{
-        const result =  await ordersCollection.find({userId: new ObjectId(_orderId)})
-        .sort({_id: -1})
-        .limit(15)
-        .project({
-          _id: 1,
-          userAddress: 1,
-          userCity: 1,
-          finalAmount: 1,
-          orderStatus: 1
-        }).toArray();
-        res.status(200).send({allOrders: result})
+      try {
+        const result = await ordersCollection.find({ userId: new ObjectId(_orderId) })
+          .sort({ _id: -1 })
+          .limit(15)
+          .project({
+            _id: 1,
+            userAddress: 1,
+            userCity: 1,
+            finalAmount: 1,
+            status :1,
+            orderStatus: 1,
+          }).toArray();
+        res.status(200).send({ allOrders: result })
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2072,12 +2073,12 @@ app.get("/orders", verifyJWT, async (req, res) => {
         return res.status(401).send({ error: true, message: "unauthorized" });
       }
 
-      try{
-        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)});
+      try {
+        const result = await ordersCollection.findOne({ _id: new ObjectId(_orderId) });
         //console.log(result)
-        res.status(200).send({details: result})
+        res.status(200).send({ details: result })
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2090,31 +2091,34 @@ app.get("/orders", verifyJWT, async (req, res) => {
     app.get("/for-admin/order-detail-view/:_orderId", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const _orderId = req.params._orderId;
       console.log(_orderId);
-      
-      try{
-        const result =  await ordersCollection.findOne({_id: new ObjectId(_orderId)} , {projection: {    
-          _id: 1,
-          userId: 1,
-          userCity: 1,
-          userPhone: 1,
-          coupon: 1,
-          orderedItems: 1,
-          subTotalAmount: 1,
-          discountedAmount: 1,
-          courirerCharge: 1,
-          finalAmount: 1,
-          orderStatus: 1,
-          typeOfPayment: 1,
-          deliveryPartner: 1,
-          userAddress : 1
-        }});
+
+      try {
+        const result = await ordersCollection.findOne({ _id: new ObjectId(_orderId) }, {
+          projection: {
+            _id: 1,
+            userId: 1,
+            userCity: 1,
+            userPhone: 1,
+            coupon: 1,
+            orderedItems: 1,
+            subTotalAmount: 1,
+            discountedAmount: 1,
+            courirerCharge: 1,
+            finalAmount: 1,
+            orderStatus: 1,
+            typeOfPayment: 1,
+            deliveryPartner: 1,
+            userAddress: 1,
+            status :1
+          }
+        });
 
 
-        const userName = await profileCollection.findOne({_id: result?.userId},{projection : {name : 1}})
+        const userName = await profileCollection.findOne({ _id: result?.userId }, { projection: { name: 1 } })
         result.name = userName?.name;
-        res.status(200).send({details: result})
+        res.status(200).send({ details: result })
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2123,42 +2127,214 @@ app.get("/orders", verifyJWT, async (req, res) => {
     })
 
 
-    ///-------------------------------------------Admin Status Change ----------------------------///////////
+    // change order ammount total amount and discounted ammount
+    app.patch("/change-order-total-ammount", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const id = req.body?.id;
+      const finalAmount = req.body?.finalAmount;
+      const discountedAmount = req.body?.discountedAmount;
 
-    ///GET DELIVERY PARTNER
-    app.get("/get-delivery-partner", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      
-      try{
-        const deliveryPartner =  await userCollection.find({role: "Delivery Partner"}).toArray();
-        //console.log(result)
-        res.status(200).send({deliveryPartner: deliveryPartner})
+
+      try {
+
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { finalAmount: finalAmount, discountedAmount: discountedAmount } })
+        res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
       }
 
     })
+
+    // subtract or add back  product quantity
+    async function updateProductQuantitiesByOrder(orderId, type) {
+ 
+      return new Promise(async (resolve, reject) => {
+        try {
+          // Find the order by _id
+          const order = await ordersCollection.findOne(
+            { _id: new ObjectId(orderId) },
+            {
+              projection: {
+                _id: 1,
+                orderedItems: 1,
+              },
+            }
+          );
+
+          if (!order) {
+            console.error(`Order with _id ${orderId} not found.`);
+            return reject(`Order with _id ${orderId} not found.`);
+          }
+
+          // Use Promise.all to update product quantities in parallel
+          const updateQuantityPromises = order.orderedItems.map(async (item) => {
+            const productId = item.productId;
+            const orderedQuantity = item.productQuantity;
+
+            // Fetch the product using the product ID
+            const product = await productsCollection.findOne(
+              { _id: new ObjectId(productId) },
+              { projection: { _id: 1, quantity: 1 } }
+            );
+
+            if (!product) {
+              console.error(`Product with ID ${productId} not found.`);
+              return reject(`Product with ID ${productId} not found.`);
+            }
+
+            let newQuantity;
+
+            if (type === "subtract") {
+              newQuantity = parseInt(product.quantity) - parseInt(orderedQuantity);
+            } else if (type === "add") {
+              newQuantity = parseInt(product.quantity) + parseInt(orderedQuantity);
+            }
+
+            // Calculate the new quantity
+
+            // Update the product data with the new quantity
+            await productsCollection.updateOne(
+              { _id: new ObjectId(productId) },
+              { $set: { quantity: parseInt(newQuantity) } }
+            );
+
+           
+          });
+
+          await Promise.all(updateQuantityPromises);
+          resolve(); // Resolve the promise when all updates are complete
+        } catch (error) {
+          console.error('Error updating product quantities:', error);
+          reject(error);
+        }
+      });
+    }
+
+
+    // duplicate remover
+    async function deleteDuplicateProducts() {
+      try {
+        // Create an aggregation pipeline to identify and delete duplicates
+        const pipeline = [
+          {
+            $group: {
+              _id: {
+
+                productTitle: '$productTitle',
+              },
+              count: { $sum: 1 },
+              uniqueIds: { $addToSet: '$_id' },
+            },
+          },
+          {
+            $match: {
+              count: { $gt: 1 }, // Find duplicates with count greater than 1
+            },
+          },
+        ];
+
+        // Execute the aggregation pipeline
+        const duplicateProducts = await productsCollection.aggregate(pipeline).toArray();
+
+        // Delete duplicates by keeping one item for each unique combination
+        const deletePromises = duplicateProducts.map(async (duplicate) => {
+          const uniqueIds = duplicate.uniqueIds;
+          const keepProductId = uniqueIds[0]; // Keep the first ID
+
+          // Delete the duplicate items (except the first one)
+          const deleteFilter = {
+            _id: { $in: uniqueIds.slice(1).map(id => new ObjectId(id)) },
+          };
+
+          await productsCollection.deleteMany(deleteFilter);
+
+          console.log(`Deleted duplicates for: ${JSON.stringify(duplicate._id)}`);
+        });
+
+        await Promise.all(deletePromises);
+        console.log('Duplicates deleted successfully.');
+      } catch (error) {
+        console.error('Error deleting duplicates:', error);
+      }
+    }
+
+
+
+
+
+    /**
+     * -------------------------------------------  Admin Status Change -------------------------------------------------------------------------------------------------------------------------------------------------------
+     * ___________________________________________  ORDER STATUS CHANGE ______________________________________________________________________________________________________________________________________________________
+     * _______________________________________________________________________________________________________________________________________________________________________________________________________________________
+     * /status-processing-to-processed        --> Go   from  "Processing"---------------------------------------------->  "Processed And Ready to Ship"  --order manager
+     * /status-back-to-processed              --> back from  "Processed And Ready to Ship"------------------------------> "Processing"   
+     * /status-processed-to-shipped           --> Go   from  "Processed And Ready to Ship"------------------------------> "Shipped"                      --order manager  --> add delivery man & subtract from stock  updateProductQuantitiesByOrder(orderid, "subtract or add")
+     * /status-processed-to-ready-to-delivery --> Go   from  "Shipped" --------------------------------------------------> "Ready To Delivery"           -- delivery man  --> make otp   
+     * /status-to-delivered                   --> Go   from  "Ready To Delivery" ----------------------------------------> "Delivered"                   -- delivery man   
+     * 
+     * /cacnel-order/:_id                     --> cancel a order
+     */
 
 
     app.patch("/status-processing-to-processed", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const orderId = req.body?.id
 
-      if(!orderId){
-        return res.status(404).send({message: "Invalid Request!"})
+      if (!orderId) {
+        return res.status(404).send({ message: "Invalid Request!" })
       }
-      try{
+      try {
         const newStatus = {
           name: "Processed And Ready to Ship",
           message: `${req.body?.message}`,
           time: new Date().toISOString(),
         };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$push:{orderStatus: newStatus}} )
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $push: { orderStatus: newStatus } })
 
         res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+    app.patch("/status-back-to-processed", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const orderId = req.body?.id
+
+      if (!orderId) {
+        return res.status(404).send({ message: "Invalid Request!" })
+      }
+      try {
+
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $pull: { orderStatus: { name: "Processed And Ready to Ship" } } })
+
+        res.status(200).send(true);
+      }
+      catch {
+        e => {
+          res.status(500).send({ message: "error in server" })
+        }
+      }
+
+    })
+
+
+
+
+    // to get delivery partner name 
+    app.get("/get-delivery-partner", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+
+      try {
+        const deliveryPartner = await userCollection.find({ role: "Delivery Partner" }).toArray();
+        //console.log(result)
+        res.status(200).send({ deliveryPartner: deliveryPartner })
+      }
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2169,23 +2345,23 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
     app.patch("/status-processed-to-shipped", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
       const deliveryMan = req.body?.deliveryPartner;
-      
+
       const orderId = req.body?.id
 
-      if(!orderId || !deliveryMan){
-        return res.status(404).send({message: "Invalid Request!"})
+      if (!orderId || !deliveryMan) {
+        return res.status(404).send({ message: "Invalid Request!" })
       }
-      try{
+      try {
         const newStatus = {
           name: "Shipped",
           message: `${req.body?.message}`,
           time: new Date().toISOString(),
         };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{deliveryPartner: deliveryMan} ,$push:{orderStatus: newStatus}} )
-
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $set: { deliveryPartner: deliveryMan }, $push: { orderStatus: newStatus } });
+       
         res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2193,50 +2369,31 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
     })
 
-    app.patch("/status-back-to-processed", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      const orderId = req.body?.id
-
-      if(!orderId){
-        return res.status(404).send({message: "Invalid Request!"})
-      }
-      try{
-       
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$pull:{orderStatus: {name: "Processed And Ready to Ship"}}} )
-
-        res.status(200).send(true);
-      }
-      catch{
-        e => {
-          res.status(500).send({ message: "error in server" })
-        }
-      }
-
-    })
 
     const generateOTP = () => {
       const characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
       return Array.from({ length: 6 }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
-  }
+    }
 
-    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      
+    app.patch("/status-processed-to-ready-to-delivery", verifyJWT, checkPermission(['admin', 'Order Manager', 'Delivery Partner']), async (req, res) => {
+
       const orderId = req.body?.id
 
-      if(!orderId){
-        return res.status(404).send({message: "Invalid Request!"})
+      if (!orderId) {
+        return res.status(404).send({ message: "Invalid Request!" })
       }
-      try{
+      try {
         const OTP = await generateOTP();
         const newStatus = {
           name: "Ready To Delivery",
           message: `${req.body?.message}`,
           time: new Date().toISOString(),
         };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{OTP: OTP} ,$push:{orderStatus: newStatus}} )
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $set: { OTP: OTP }, $push: { orderStatus: newStatus } })
 
         res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2246,31 +2403,33 @@ app.get("/orders", verifyJWT, async (req, res) => {
 
 
 
-    app.patch("/status-to-delivered", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+    app.patch("/status-to-delivered", verifyJWT, checkPermission(['admin', 'Order Manager', 'Delivery Partner']), async (req, res) => {
       const OTP = req.body?.OTP;
       const orderId = req.body?.id;
 
-      if(!orderId || !OTP){
-        return res.status(404).send({message: "Invalid Request!"})
+      if (!orderId || !OTP) {
+        return res.status(404).send({ message: "Invalid Request!" })
       }
-      try{
-        const orderDeliver = await ordersCollection.findOne({_id: new ObjectId(orderId)} , {projection: { 
-          _id: 1,
-          OTP: 1
-        }})
-        if(orderDeliver?.OTP !== OTP){
-          return res.status(422).send({message: "Wrong OTP!"})
+      try {
+        const orderDeliver = await ordersCollection.findOne({ _id: new ObjectId(orderId) }, {
+          projection: {
+            _id: 1,
+            OTP: 1
+          }
+        })
+        if (orderDeliver?.OTP !== OTP) {
+          return res.status(422).send({ message: "Wrong OTP!" })
         }
         const newStatus = {
           name: "Delivered",
           message: `${req.body?.message}`,
           time: new Date().toISOString(),
         };
-        const result = await ordersCollection.updateOne({_id: new ObjectId(orderId)}, {$set:{status: "Delivered"} ,$push:{orderStatus: newStatus}} )
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $set: { status: "Delivered" }, $push: { orderStatus: newStatus } })
 
         res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
         e => {
           res.status(500).send({ message: "error in server" })
         }
@@ -2279,42 +2438,51 @@ app.get("/orders", verifyJWT, async (req, res) => {
     })
 
 
-    /// change order ammount total amount and discounted ammount
-    app.patch("/change-order-total-ammount", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      const id = req.body?.id;
-      const finalAmount = req.body?.finalAmount;
-      const discountedAmount = req.body?.discountedAmount;
-      
-
-      try{
-  
-        const result = await ordersCollection.updateOne({_id: new ObjectId(id)}, {$set:{finalAmount: finalAmount, discountedAmount:discountedAmount}})
+    // cancel order + add back  
+    app.delete("/cacnel-order/:_id", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
+      const orderId = req.params._id;
+      if (!orderId) {
+        return res.status(404).send({ message: "Invalid Request!" })
+      }
+      try {
+        const orderDeliver = await ordersCollection.findOne({ _id: new ObjectId(orderId)} ,{
+          projection: {
+            _id: 1,
+            status: 1
+          }
+        });
+        if (!orderDeliver) {
+          return res.status(404).send({ message: "No dataa!" })
+        }
+        if(orderDeliver?.status === "Delivered" || orderDeliver?.status === "Cancelled" ){
+          return res.status(409).send({ message: `You can't cancel a ${orderDeliver?.status} product status` })
+        }
+        const result = await ordersCollection.updateOne({ _id: new ObjectId(orderId) }, { $set: { status: "Cancelled" } });
+        
+        await updateProductQuantitiesByOrder(orderId, "add");
         res.status(200).send({ orderData: result });
       }
-      catch{
+      catch {
         e => {
-          res.status(500).send({ message: "error in server" })
+          res.status(500).send({ message: "Error in Server" })
         }
       }
-
     })
 
 
 
-    app.get("/get-delivery-partner", verifyJWT, checkPermission(['admin', 'Order Manager']), async (req, res) => {
-      
-      try{
-        const deliveryPartner =  await userCollection.find({role: "Delivery Partner"}).toArray();
-        //console.log(result)
-        res.status(200).send({deliveryPartner: deliveryPartner})
-      }
-      catch{
-        e => {
-          res.status(500).send({ message: "error in server" })
-        }
-      }
 
-    })
+
+
+
+
+
+
+
+
+
+
+
 
   } finally {
   }
