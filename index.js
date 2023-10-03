@@ -550,19 +550,21 @@ async function run() {
     app.get("/upload-category/:slug/upload-top-banner", async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
-        console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
         const category = await categoryCollection.findOne({
           slug: categorySlugToRetrieve,
-        });
+        }, {projection: {_id: 1, topBannerImage: 1}});
 
-        console.log("category:", category);
+       // console.log("subcategory:", subCategory);
 
         if (!category) {
-          return res.status(404).json({ message: "Category not found." });
+          return res.status(404).json({ message: "category not found." });
         }
-
-        res.status(200).send(category);
+        if(!category?.topBannerImage){
+          return res.status(200).send([]);
+        }
+        res.status(200).send(category?.topBannerImage);
       } catch (error) {
         console.error("Error retrieving category:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -572,19 +574,21 @@ async function run() {
     app.get("/upload-category/:slug/upload-second-banner", async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
-        console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
         const category = await categoryCollection.findOne({
           slug: categorySlugToRetrieve,
-        });
+        }, {projection: {_id: 1, secondBannerImage: 1}});
 
-        console.log("category:", category);
+       // console.log("subcategory:", subCategory);
 
         if (!category) {
-          return res.status(404).json({ message: "Category not found." });
+          return res.status(404).json({ message: "category not found." });
         }
-
-        res.status(200).send(category);
+        if(!category?.secondBannerImage){
+          return res.status(200).send([]);
+        }
+        res.status(200).send(category?.secondBannerImage);
       } catch (error) {
         console.error("Error retrieving category:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -596,19 +600,21 @@ async function run() {
       async (req, res) => {
         try {
           const categorySlugToRetrieve = req.params.slug;
-          console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
-
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+  
           const category = await categoryCollection.findOne({
             slug: categorySlugToRetrieve,
-          });
-
-          console.log("category:", category);
-
+          }, {projection: {_id: 1, topRightBannerLayout2: 1}});
+  
+         // console.log("subcategory:", subCategory);
+  
           if (!category) {
-            return res.status(404).json({ message: "Category not found." });
+            return res.status(404).json({ message: "category not found." });
           }
-
-          res.status(200).send(category);
+          if(!category?.topRightBannerLayout2){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(category?.topRightBannerLayout2);
         } catch (error) {
           console.error("Error retrieving category:", error);
           res.status(500).json({ message: "Internal server error." });
@@ -621,20 +627,22 @@ async function run() {
       async (req, res) => {
         try {
           const categorySlugToRetrieve = req.params.slug;
-          console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
-
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+  
           const category = await categoryCollection.findOne({
             slug: categorySlugToRetrieve,
-          });
-
-          console.log("category:", category);
-
+          }, {projection: {_id: 1, topLeftBannerLayout2: 1}});
+  
+         // console.log("subcategory:", subCategory);
+  
           if (!category) {
-            return res.status(404).json({ message: "Category not found." });
+            return res.status(404).json({ message: "category not found." });
           }
-
-          res.status(200).send(category);
-        } catch (error) {
+          if(!category?.topLeftBannerLayout2){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(category?.topLeftBannerLayout2);
+        }catch (error) {
           console.error("Error retrieving category:", error);
           res.status(500).json({ message: "Internal server error." });
         }
@@ -644,19 +652,21 @@ async function run() {
     app.get("/upload-category/:slug/upload-slim-banner", async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
-        console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
         const category = await categoryCollection.findOne({
           slug: categorySlugToRetrieve,
-        });
+        }, {projection: {_id: 1, slimBanners: 1}});
 
-        console.log("category:", category);
+       // console.log("subcategory:", subCategory);
 
         if (!category) {
-          return res.status(404).json({ message: "Category not found." });
+          return res.status(404).json({ message: "category not found." });
         }
-
-        res.status(200).send(category);
+        if(!category?.slimBanners){
+          return res.status(200).send([]);
+        }
+        res.status(200).send(category?.slimBanners);
       } catch (error) {
         console.error("Error retrieving category:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -666,19 +676,21 @@ async function run() {
     app.get("/upload-category/:slug/upload-bottom-banner", async (req, res) => {
       try {
         const categorySlugToRetrieve = req.params.slug;
-        console.log("categorySlugToRetrieve:", categorySlugToRetrieve);
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
         const category = await categoryCollection.findOne({
           slug: categorySlugToRetrieve,
-        });
+        }, {projection: {_id: 1, bottomBannerImage: 1}});
 
-        console.log("category:", category);
+       // console.log("subcategory:", subCategory);
 
         if (!category) {
-          return res.status(404).json({ message: "Category not found." });
+          return res.status(404).json({ message: "category not found." });
         }
-
-        res.status(200).send(category);
+        if(!category?.bottomBannerImage){
+          return res.status(200).send([]);
+        }
+        res.status(200).send(category?.bottomBannerImage);
       } catch (error) {
         console.error("Error retrieving category:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -712,6 +724,25 @@ async function run() {
       }
     });
 
+
+    app.get("/sub-categories/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      try {
+        const query = { slug: slug };
+        const subCategory = await subCategoryCollection.findOne(query);
+
+        if (!subCategory) {
+          return res.status(404).send({ message: "SubCategory not found." });
+          
+        } 
+        const products = await productsCollection.find({subCategory: subCategory?.name}).toArray()
+        //console.log(subCategories)
+          res.send({subCategory: subCategory, products: products});
+        } catch (error) {
+        res.status(500).send({ message: "Internal server error." });
+      }
+    });
+    
 
     app.post(
       "/upload-sub-category",
@@ -824,19 +855,21 @@ async function run() {
       async (req, res) => {
         try {
           const subCategorySlugToRetrieve = req.params.slug;
-          console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
           const subCategory = await subCategoryCollection.findOne({
             slug: subCategorySlugToRetrieve,
-          });
+          }, {projection: {_id: 1, topBannerImage: 1}});
 
-          console.log("subcategory:", subCategory);
+         // console.log("subcategory:", subCategory);
 
           if (!subCategory) {
             return res.status(404).json({ message: "subCategory not found." });
           }
-
-          res.status(200).send(subCategory);
+          if(!subCategory?.topBannerImage){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.topBannerImage);
         } catch (error) {
           console.error("Error retrieving subcategory:", error);
           res.status(500).json({ message: "Internal server error." });
@@ -849,19 +882,21 @@ async function run() {
       async (req, res) => {
         try {
           const subCategorySlugToRetrieve = req.params.slug;
-          console.log("subCategorySlugToRetrieve:", subCategorySlugToRetrieve);
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
           const subCategory = await subCategoryCollection.findOne({
             slug: subCategorySlugToRetrieve,
-          });
+          }, {projection: {_id: 1, topRightBannerLayout2: 1}});
 
-          console.log("subCategory:", subCategory);
+         // console.log("subcategory:", subCategory);
 
           if (!subCategory) {
             return res.status(404).json({ message: "subCategory not found." });
           }
-
-          res.status(200).send(subCategory);
+          if(!subCategory?.topRightBannerLayout2){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.topRightBannerLayout2);
         } catch (error) {
           console.error("Error retrieving subCategory:", error);
           res.status(500).json({ message: "Internal server error." });
@@ -874,19 +909,21 @@ async function run() {
       async (req, res) => {
         try {
           const subCategorySlugToRetrieve = req.params.slug;
-          console.log("categorySlugToRetrieve:", subCategorySlugToRetrieve);
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
           const subCategory = await subCategoryCollection.findOne({
             slug: subCategorySlugToRetrieve,
-          });
+          }, {projection: {_id: 1, topLeftBannerLayout2: 1}});
 
-          console.log("category:", subCategory);
+         // console.log("subcategory:", subCategory);
 
           if (!subCategory) {
             return res.status(404).json({ message: "subCategory not found." });
           }
-
-          res.status(200).send(subCategory);
+          if(!subCategory?.topLeftBannerLayout2){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.topLeftBannerLayout2);
         } catch (error) {
           console.error("Error retrieving subCategory:", error);
           res.status(500).json({ message: "Internal server error." });
@@ -899,19 +936,21 @@ async function run() {
       async (req, res) => {
         try {
           const subCategorySlugToRetrieve = req.params.slug;
-          console.log("categorySlugToRetrieve:", subCategorySlugToRetrieve);
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
           const subCategory = await subCategoryCollection.findOne({
             slug: subCategorySlugToRetrieve,
-          });
+          }, {projection: {_id: 1, slimBanners: 1}});
 
-          console.log("subCategory:", subCategory);
+         // console.log("subcategory:", subCategory);
 
           if (!subCategory) {
             return res.status(404).json({ message: "subCategory not found." });
           }
-
-          res.status(200).send(subCategory);
+          if(!subCategory?.slimBanners){
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.slimBanners);
         } catch (error) {
           console.error("Error retrieving subCategory:", error);
           res.status(500).json({ message: "Internal server error." });
@@ -2400,6 +2439,7 @@ async function run() {
       }
 
     })
+
 
 
 
