@@ -78,6 +78,7 @@ async function run() {
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
     const productsCollection = client.db("e-mart").collection("products");
+    const bannersCollection = client.db("e-mart").collection("banners");
     const menCategoryCollection = client.db("e-mart").collection("menCategory");
     const womenCategoryCollection = client
       .db("e-mart")
@@ -290,6 +291,87 @@ async function run() {
       //console.log(result);
       res.send(result);
     });
+
+
+    ///--------------------------Home page Banners------------------------------------
+
+    app.post(
+      "/home-top-banners",
+      verifyJWT,
+      checkPermission(["admin", "Product Manager"]),
+      async (req, res) => {
+        const newBanner = req.body;
+        const result = await bannersCollection.insertOne(newBanner);
+        res.send(result);
+      }
+    );
+
+    app.patch(
+      "/home-top-banners/:slug",
+      verifyJWT,
+      checkPermission(["admin", "Product Manager"]),
+      async (req, res) => {
+        const homeSlug = req.params.slug;
+        const {
+          topBannerImage,
+          // secondBannerImage,
+          // bottomBannerImage,
+        } = req.body;
+
+        try {
+          // Prepare the fields to update (both topBannerImage and secondBannerImage)
+          const updateFields = {};
+
+          if (topBannerImage) {
+            // Use the $push operator to append the new image to the existing array
+            updateFields.$push = { topBannerImage };
+          }
+          
+          // Update the category document that matches the slug
+          const result = await bannersCollection.updateOne(
+            { slug: homeSlug },
+            updateFields
+          );
+
+          if (result.matchedCount === 0) {
+            return res.status(404).json({ message: "Banners not found." });
+          }
+
+          res.json({ message: "Banners updated successfully.", result });
+        } catch (error) {
+          console.error("Error updating banners:", error);
+          res.status(500).json({ message: "Error updating banners." });
+        }
+      }
+    );
+
+    app.get("/home-top-banners/:slug/top-banner", async (req, res) => {
+      try {
+        const homeSlug = req.params.slug;
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+
+        const banner = await bannersCollection.findOne(
+          {
+            slug: homeSlug,
+          },
+          { projection: { _id: 1, topBannerImage: 1 } }
+        );
+
+        // console.log("subcategory:", subCategory);
+
+        if (!banner) {
+          return res.status(404).json({ message: "banner not found." });
+        }
+        if (!banner?.topBannerImage) {
+          return res.status(200).send([]);
+        }
+        res.status(200).send(banner?.topBannerImage);
+      } catch (error) {
+        console.error("Error retrieving banner:", error);
+        res.status(500).json({ message: "Internal server error." });
+      }
+    });
+    
 
     //----------------------------- Products ----------------------------------
 
