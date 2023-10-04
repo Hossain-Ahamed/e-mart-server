@@ -314,8 +314,8 @@ async function run() {
         const homeSlug = req.params.slug;
         const {
           topBannerImage,
-          // secondBannerImage,
-          // bottomBannerImage,
+          secondBannerImage,
+          bottomBannerImage,
         } = req.body;
 
         try {
@@ -325,6 +325,14 @@ async function run() {
           if (topBannerImage) {
             // Use the $push operator to append the new image to the existing array
             updateFields.$push = { topBannerImage };
+          }
+          if (secondBannerImage) {
+            // Use the $push operator to append the new image to the existing array
+            updateFields.$push = { secondBannerImage };
+          }
+          if (bottomBannerImage) {
+            // Use the $push operator to append the new image to the existing array
+            updateFields.$push = { bottomBannerImage };
           }
           
           // Update the category document that matches the slug
@@ -366,6 +374,61 @@ async function run() {
           return res.status(200).send([]);
         }
         res.status(200).send(banner?.topBannerImage);
+      } catch (error) {
+        console.error("Error retrieving banner:", error);
+        res.status(500).json({ message: "Internal server error." });
+      }
+    });
+
+    app.get("/home-second-banners/:slug/second-banner", async (req, res) => {
+      try {
+        const homeSlug = req.params.slug;
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+
+        const banner = await bannersCollection.findOne(
+          {
+            slug: homeSlug,
+          },
+          { projection: { _id: 1, secondBannerImage: 1 } }
+        );
+
+        // console.log("subcategory:", subCategory);
+
+        if (!banner) {
+          return res.status(404).json({ message: "banner not found." });
+        }
+        if (!banner?.secondBannerImage) {
+          return res.status(200).send([]);
+        }
+        res.status(200).send(banner?.secondBannerImage);
+      } catch (error) {
+        console.error("Error retrieving banner:", error);
+        res.status(500).json({ message: "Internal server error." });
+      }
+    });
+
+
+    app.get("/home-bottom-banners/:slug/bottom-banner", async (req, res) => {
+      try {
+        const homeSlug = req.params.slug;
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+
+        const banner = await bannersCollection.findOne(
+          {
+            slug: homeSlug,
+          },
+          { projection: { _id: 1, bottomBannerImage: 1 } }
+        );
+
+        // console.log("subcategory:", subCategory);
+
+        if (!banner) {
+          return res.status(404).json({ message: "banner not found." });
+        }
+        if (!banner?.bottomBannerImage) {
+          return res.status(200).send([]);
+        }
+        res.status(200).send(banner?.bottomBannerImage);
       } catch (error) {
         console.error("Error retrieving banner:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -935,6 +998,7 @@ async function run() {
           topRightBannerLayout2,
           topLeftBannerLayout2,
           slimBannerImage,
+          bottomBannerImage
         } = req.body;
 
         try {
@@ -956,6 +1020,9 @@ async function run() {
           }
           if (slimBannerImage) {
             updateFields.$push = { slimBannerImage };
+          }
+          if (bottomBannerImage) {
+            updateFields.$push = { bottomBannerImage };
           }
 
           // Update the category document that matches the slug
@@ -1005,6 +1072,33 @@ async function run() {
         }
       }
     );
+
+    app.get("/upload-sub-category/:slug/upload-second-banner", async (req, res) => {
+      try {
+        const subCategorySlugToRetrieve = req.params.slug;
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+
+        const subCategory = await subCategoryCollection.findOne(
+          {
+            slug: subCategorySlugToRetrieve,
+          },
+          { projection: { _id: 1, secondBannerImage: 1 } }
+        );
+
+        // console.log("subcategory:", subCategory);
+
+        if (!subCategory) {
+          return res.status(404).json({ message: "category not found." });
+        }
+        if (!subCategory?.secondBannerImage) {
+          return res.status(200).send([]);
+        }
+        res.status(200).send(subCategory?.secondBannerImage);
+      } catch (error) {
+        console.error("Error retrieving subCategory:", error);
+        res.status(500).json({ message: "Internal server error." });
+      }
+    });
 
     app.get(
       "/upload-sub-category/:slug/upload-top-right-banner-layout2",
@@ -1095,6 +1189,33 @@ async function run() {
         }
       }
     );
+
+    app.get("/upload-sub-category/:slug/upload-bottom-banner", async (req, res) => {
+      try {
+        const subCategorySlugToRetrieve = req.params.slug;
+        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+
+        const subCategory = await subCategoryCollection.findOne(
+          {
+            slug: subCategorySlugToRetrieve,
+          },
+          { projection: { _id: 1, bottomBannerImage: 1 } }
+        );
+
+        // console.log("subcategory:", subCategory);
+
+        if (!subCategory) {
+          return res.status(404).json({ message: "subCategory not found." });
+        }
+        if (!subCategory?.bottomBannerImage) {
+          return res.status(200).send([]);
+        }
+        res.status(200).send(subCategory?.bottomBannerImage);
+      } catch (error) {
+        console.error("Error retrieving subCategory:", error);
+        res.status(500).json({ message: "Internal server error." });
+      }
+    });
 
     app.get("/menCategory", async (req, res) => {
       const query = {};
