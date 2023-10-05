@@ -998,6 +998,9 @@ async function run() {
           topRightBannerLayout2,
           topLeftBannerLayout2,
           slimBannerImage,
+          headingsSlim,
+          titleSlim,
+          offerSlim,
           bottomBannerImage
         } = req.body;
 
@@ -1018,8 +1021,17 @@ async function run() {
           if (topLeftBannerLayout2) {
             updateFields.$push = { topLeftBannerLayout2 };
           }
-          if (slimBannerImage) {
-            updateFields.$push = { slimBannerImage };
+          if (slimBannerImage || headingsSlim || titleSlim || offerSlim) {
+            // Create an array with the values
+            const slimBannerData = {
+              slimBannerImage,
+              headingsSlim,
+              titleSlim,
+              offerSlim,
+            };
+
+            // Use $push to append the slimBannerData object to the existing array
+            updateFields.$push = { slimBanners: slimBannerData };
           }
           if (bottomBannerImage) {
             updateFields.$push = { bottomBannerImage };
@@ -2963,6 +2975,18 @@ async function run() {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         const result = await categoryCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
+
+    app.delete(
+      "/sub-categories/:id",
+      verifyJWT,
+      checkPermission(["admin", "Product Manager"]),
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await subCategoryCollection.deleteOne(query);
         res.send(result);
       }
     );
