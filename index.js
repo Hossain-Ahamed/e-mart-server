@@ -144,7 +144,9 @@ async function run() {
       verifyJWT,
       checkPermission(["admin"]),
       async (req, res) => {
-        const result = await userCollection.find({ email: { $ne: req.query?.email } }).toArray();
+        const result = await userCollection
+          .find({ email: { $ne: req.query?.email } })
+          .toArray();
         //console.log(result);
         res.send(result);
       }
@@ -292,7 +294,6 @@ async function run() {
       res.send(result);
     });
 
-
     ///--------------------------Home page Banners------------------------------------
 
     app.post(
@@ -312,11 +313,8 @@ async function run() {
       checkPermission(["admin", "Product Manager"]),
       async (req, res) => {
         const homeSlug = req.params.slug;
-        const {
-          topBannerImage,
-          secondBannerImage,
-          bottomBannerImage,
-        } = req.body;
+        const { topBannerImage, secondBannerImage, bottomBannerImage } =
+          req.body;
 
         try {
           // Prepare the fields to update (both topBannerImage and secondBannerImage)
@@ -334,7 +332,7 @@ async function run() {
             // Use the $push operator to append the new image to the existing array
             updateFields.$push = { bottomBannerImage };
           }
-          
+
           // Update the category document that matches the slug
           const result = await bannersCollection.updateOne(
             { slug: homeSlug },
@@ -407,7 +405,6 @@ async function run() {
       }
     });
 
-
     app.get("/home-bottom-banners/:slug/bottom-banner", async (req, res) => {
       try {
         const homeSlug = req.params.slug;
@@ -434,7 +431,6 @@ async function run() {
         res.status(500).json({ message: "Internal server error." });
       }
     });
-    
 
     //----------------------------- Products ----------------------------------
 
@@ -1001,7 +997,7 @@ async function run() {
           headingsSlim,
           titleSlim,
           offerSlim,
-          bottomBannerImage
+          bottomBannerImage,
         } = req.body;
 
         try {
@@ -1085,32 +1081,35 @@ async function run() {
       }
     );
 
-    app.get("/upload-sub-category/:slug/upload-second-banner", async (req, res) => {
-      try {
-        const subCategorySlugToRetrieve = req.params.slug;
-        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+    app.get(
+      "/upload-sub-category/:slug/upload-second-banner",
+      async (req, res) => {
+        try {
+          const subCategorySlugToRetrieve = req.params.slug;
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
-        const subCategory = await subCategoryCollection.findOne(
-          {
-            slug: subCategorySlugToRetrieve,
-          },
-          { projection: { _id: 1, secondBannerImage: 1 } }
-        );
+          const subCategory = await subCategoryCollection.findOne(
+            {
+              slug: subCategorySlugToRetrieve,
+            },
+            { projection: { _id: 1, secondBannerImage: 1 } }
+          );
 
-        // console.log("subcategory:", subCategory);
+          // console.log("subcategory:", subCategory);
 
-        if (!subCategory) {
-          return res.status(404).json({ message: "category not found." });
+          if (!subCategory) {
+            return res.status(404).json({ message: "category not found." });
+          }
+          if (!subCategory?.secondBannerImage) {
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.secondBannerImage);
+        } catch (error) {
+          console.error("Error retrieving subCategory:", error);
+          res.status(500).json({ message: "Internal server error." });
         }
-        if (!subCategory?.secondBannerImage) {
-          return res.status(200).send([]);
-        }
-        res.status(200).send(subCategory?.secondBannerImage);
-      } catch (error) {
-        console.error("Error retrieving subCategory:", error);
-        res.status(500).json({ message: "Internal server error." });
       }
-    });
+    );
 
     app.get(
       "/upload-sub-category/:slug/upload-top-right-banner-layout2",
@@ -1202,32 +1201,35 @@ async function run() {
       }
     );
 
-    app.get("/upload-sub-category/:slug/upload-bottom-banner", async (req, res) => {
-      try {
-        const subCategorySlugToRetrieve = req.params.slug;
-        //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
+    app.get(
+      "/upload-sub-category/:slug/upload-bottom-banner",
+      async (req, res) => {
+        try {
+          const subCategorySlugToRetrieve = req.params.slug;
+          //console.log("subcategorySlugToRetrieve:", subCategorySlugToRetrieve);
 
-        const subCategory = await subCategoryCollection.findOne(
-          {
-            slug: subCategorySlugToRetrieve,
-          },
-          { projection: { _id: 1, bottomBannerImage: 1 } }
-        );
+          const subCategory = await subCategoryCollection.findOne(
+            {
+              slug: subCategorySlugToRetrieve,
+            },
+            { projection: { _id: 1, bottomBannerImage: 1 } }
+          );
 
-        // console.log("subcategory:", subCategory);
+          // console.log("subcategory:", subCategory);
 
-        if (!subCategory) {
-          return res.status(404).json({ message: "subCategory not found." });
+          if (!subCategory) {
+            return res.status(404).json({ message: "subCategory not found." });
+          }
+          if (!subCategory?.bottomBannerImage) {
+            return res.status(200).send([]);
+          }
+          res.status(200).send(subCategory?.bottomBannerImage);
+        } catch (error) {
+          console.error("Error retrieving subCategory:", error);
+          res.status(500).json({ message: "Internal server error." });
         }
-        if (!subCategory?.bottomBannerImage) {
-          return res.status(200).send([]);
-        }
-        res.status(200).send(subCategory?.bottomBannerImage);
-      } catch (error) {
-        console.error("Error retrieving subCategory:", error);
-        res.status(500).json({ message: "Internal server error." });
       }
-    });
+    );
 
     app.get("/menCategory", async (req, res) => {
       const query = {};
@@ -3079,7 +3081,7 @@ async function run() {
                 _id: new ObjectId(_orderId),
                 "deliveryPartner.email": email, // Check for the specific email
                 "orderStatus.name": "Shipped", // Ensure that orderStatus.name is "Shipped"
-                "deliveryPartner": { $exists: true }, // Ensure the existence of deliveryPartner
+                deliveryPartner: { $exists: true }, // Ensure the existence of deliveryPartner
               },
               {
                 projection: {
@@ -3101,8 +3103,8 @@ async function run() {
                 },
               }
             );
-            if(!result || !result?.deliveryPartner){
-              return res.status(404).send({message: "No Data Found"})
+            if (!result || !result?.deliveryPartner) {
+              return res.status(404).send({ message: "No Data Found" });
             }
           } else {
             result = await ordersCollection.findOne(
@@ -3128,11 +3130,11 @@ async function run() {
               }
             );
 
-            if(!result){
-              return res.status(404).send({message: "No Data Found"})
+            if (!result) {
+              return res.status(404).send({ message: "No Data Found" });
             }
           }
-          
+
           const userName = await profileCollection.findOne(
             { _id: result?.userId },
             { projection: { name: 1 } }
@@ -3540,6 +3542,293 @@ async function run() {
             res.status(500).send({ message: "Error in Server" });
           };
         }
+      }
+    );
+
+    // ---------------------Admin Stats------------------------------------------
+
+    app.get(
+      "/admin-stats",
+      verifyJWT,
+      checkPermission(["admin"]),
+      async (req, res) => {
+        const users = await userCollection.estimatedDocumentCount();
+
+        // Count orders with status "Processing" and not "Cancelled"
+        const ordersPipeline = [
+          {
+            $match: {
+              $and: [
+                { "orderStatus.name": "Processing" },
+                { status: { $ne: "Cancelled" } },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+            },
+          },
+        ];
+
+        const ordersResult = await ordersCollection
+          .aggregate(ordersPipeline)
+          .next();
+        const orders = ordersResult ? ordersResult.count : 0;
+
+        // Sum of finalAmount from orders
+        const finalAmountPipeline = [
+          {
+            $match: {
+              $and: [
+                { "orderStatus.name": "Processing" },
+                { status: { $ne: "Cancelled" } },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalFinalAmount: { $sum: "$finalAmount" },
+            },
+          },
+        ];
+
+        const finalAmountResult = await ordersCollection
+          .aggregate(finalAmountPipeline)
+          .next();
+        const revenue = finalAmountResult
+          ? finalAmountResult.totalFinalAmount
+          : 0;
+
+        // Count products with quantity greater than 0
+        const productsPipeline = [
+          {
+            $match: {
+              quantity: { $gt: 0 },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+            },
+          },
+        ];
+
+        const productsResult = await productsCollection
+          .aggregate(productsPipeline)
+          .next();
+        const products = productsResult ? productsResult.count : 0;
+
+        // Calculate total finalAmount for each month
+        const finalAmountByMonthPipeline = [
+          {
+            $match: {
+              "orderStatus.name": "Processing",
+              status: { $ne: "Cancelled" },
+            },
+          },
+          {
+            $unwind: "$orderStatus",
+          },
+          {
+            $match: {
+              "orderStatus.name": "Processing",
+              status: { $ne: "Cancelled" },
+            },
+          },
+          {
+            $project: {
+              month: { $month: { $toDate: "$orderStatus.time" } },
+              finalAmount: "$finalAmount",
+            },
+          },
+          {
+            $group: {
+              _id: { month: "$month" },
+              totalFinalAmount: { $sum: "$finalAmount" },
+            },
+          },
+          {
+            $sort: { "_id.month": 1 },
+          },
+        ];
+
+        const finalAmountByMonthResult = await ordersCollection
+          .aggregate(finalAmountByMonthPipeline)
+          .toArray();
+
+        // Convert month numbers to month names
+        const monthNames = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+        const finalAmountByMonthWithNames = finalAmountByMonthResult.map(
+          (item) => ({
+            month: monthNames[item._id.month - 1], // Adjust for 0-based array
+            totalFinalAmount: item.totalFinalAmount,
+          })
+        );
+
+        // Calculate total number of orders per month with month numbers
+        const ordersByMonthPipeline = [
+          {
+            $match: {
+              "orderStatus.name": "Processing",
+              status: { $ne: "Cancelled" },
+            },
+          },
+          {
+            $unwind: "$orderStatus",
+          },
+          {
+            $match: {
+              "orderStatus.name": "Processing",
+              status: { $ne: "Cancelled" },
+            },
+          },
+          {
+            $project: {
+              month: { $month: { $toDate: "$orderStatus.time" } },
+            },
+          },
+          {
+            $group: {
+              _id: { month: "$month" },
+              totalOrders: { $sum: 1 }, // Count orders per month
+            },
+          },
+          {
+            $sort: { "_id.month": 1 },
+          },
+        ];
+
+        const ordersByMonthResult = await ordersCollection
+          .aggregate(ordersByMonthPipeline)
+          .toArray();
+
+        
+        const ordersByMonthWithNames = ordersByMonthResult.map((item) => ({
+          month: monthNames[item._id.month - 1], // Adjust for 0-based array
+          totalOrders: item.totalOrders,
+        }));
+
+
+        // Calculate total number of orders per category
+  const ordersByCategoryPipeline = [
+    {
+      $match: {
+        "orderStatus.name": "Processing",
+        status: { $ne: "Cancelled" }
+      }
+    },
+    {
+      $unwind: "$orderedItems"
+    },
+    {
+      $lookup: {
+        from: "products", // Use your actual collection name
+        localField: "orderedItems.productName",
+        foreignField: "productTitle",
+        as: "product"
+      }
+    },
+    {
+      $unwind: "$product"
+    },
+    {
+      $project: {
+        category: "$product.category"
+      }
+    },
+    {
+      $group: {
+        _id: {category: "$category"},
+        totalOrders: { $sum: 1 } // Count orders per category
+      }
+    }
+  ];
+
+  const ordersByCategoryResult = await ordersCollection.aggregate(ordersByCategoryPipeline).toArray();
+
+  const ordersByCategory = ordersByCategoryResult.map((item) => ({
+    category: item._id.category, // Adjust for 0-based array
+    totalOrders: item.totalOrders,
+  }));
+
+  // Calculate total number of "Delivered" orders
+  const deliveredOrdersPipeline = [
+    {
+      $match: {
+        status: "Delivered"
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalDeliveredOrders: { $sum: 1 }
+      }
+    }
+  ];
+
+  const deliveredOrdersResult = await ordersCollection.aggregate(deliveredOrdersPipeline).toArray();
+
+  // Calculate total number of "Cancelled" orders
+  const cancelledOrdersPipeline = [
+    {
+      $match: {
+        status: "Cancelled"
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalCancelledOrders: { $sum: 1 }
+      }
+    }
+  ];
+
+  const cancelledOrdersResult = await ordersCollection.aggregate(cancelledOrdersPipeline).toArray();
+
+
+  // Combine the results into an array
+  const ordersStatusArray = [
+    {
+      status: "Delivered",
+      totalOrders: deliveredOrdersResult[0]?.totalDeliveredOrders || 0
+    },
+    {
+      status: "Cancelled",
+      totalOrders: cancelledOrdersResult[0]?.totalCancelledOrders || 0
+    }
+  ];
+
+
+
+
+        res.send({
+          users,
+          orders,
+          revenue,
+          products,
+          finalAmountByMonth: finalAmountByMonthWithNames,
+          ordersByMonth: ordersByMonthWithNames,
+          ordersByCategory: ordersByCategory,
+          ordersStatusArray
+        });
       }
     );
   } finally {
