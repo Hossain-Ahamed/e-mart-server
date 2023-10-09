@@ -503,6 +503,52 @@ async function run() {
       }
     );
 
+    //Reviews 
+
+    app.post("/products/:id/reviews", verifyJWT, async (req, res) => {
+      const productIdToUpdate = req.params.id;
+      const { email, name, rating, comment } = req.body;
+    
+      try {
+        // Check if the product with the specified ID exists
+        const product = await productsCollection.findOne({
+          _id: new ObjectId(productIdToUpdate)
+        });
+    
+        if (!product) {
+          return res.status(404).json({ message: "Product not found." });
+        }
+    
+        // Create a new review object
+        const review = {
+          rating,
+          comment,
+          name,
+          email,
+          createdAt: new Date()
+        };
+    
+        // Add the review to the product's reviews array
+        if (!product.reviews) {
+          product.reviews = [];
+        }
+        product.reviews.push(review);
+    
+        // Update the product document with the new review
+        const result = await productsCollection.updateOne(
+          { _id: new ObjectId(productIdToUpdate) },
+          { $set: { reviews: product.reviews } }
+        );
+    
+        res.json({ message: "Review added successfully.", result });
+      } catch (error) {
+        console.error("Error adding review:", error);
+        res.status(500).json({ message: "Error adding review." });
+      }
+    });
+    
+    
+
     // --------------------------------Delivery Charge -------------------------------
 
     app.get("/get-delivery-charge/:location", async (req, res) => {
@@ -2478,7 +2524,7 @@ async function run() {
     app.get(
       "/orders/delivered",
       verifyJWT,
-      checkPermission(["admin", "Order Manager", "Delivery Partner"]),
+     
       async (req, res) => {
         const query = req.query?.q;
         const size = parseInt(req.query.size);
@@ -3804,11 +3850,36 @@ async function run() {
   const cancelledOrdersResult = await ordersCollection.aggregate(cancelledOrdersPipeline).toArray();
 
 
+  // Calculate total number of "Pending" orders
+  const pendingOrdersPipeline = [
+    {
+      $match: {
+        $and: [
+          { "orderStatus.name": "Processing" },
+          { status: { $nin: ["Delivered", "Cancelled"] } }
+        ]
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalPendingOrders: { $sum: 1 }
+      }
+    }
+  ];
+
+  const pendingOrdersResult = await ordersCollection.aggregate(pendingOrdersPipeline).toArray();
+
+
   // Combine the results into an array
   const ordersStatusArray = [
     {
       status: "Delivered",
       totalOrders: deliveredOrdersResult[0]?.totalDeliveredOrders || 0
+    },
+    {
+      status: "Pending",
+      totalOrders: pendingOrdersResult[0]?.totalPendingOrders || 0
     },
     {
       status: "Cancelled",
