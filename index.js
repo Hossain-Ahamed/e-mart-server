@@ -3886,10 +3886,6 @@ async function run() {
       totalOrders: cancelledOrdersResult[0]?.totalCancelledOrders || 0
     }
   ];
-
-
-
-
         res.send({
           users,
           orders,
@@ -3902,6 +3898,28 @@ async function run() {
         });
       }
     );
+
+
+    //-----------------------Search-----------------------------
+
+    app.post('/search', async (req, res) => {
+      const query = req.body.query;
+    
+      try {
+        // Perform a search query on your products collection based on 'query'.
+        const result = await productsCollection.find({
+          $or: [
+            { productTitle: { $regex: query, $options: 'i' } }, // Case-insensitive title search
+            { category: { $regex: query, $options: 'i' } }, // Case-insensitive category search
+            { subCategory: { $regex: query, $options: 'i' } }, // Case-insensitive subCategory search
+          ],
+        }).toArray();
+        res.json(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'An error occurred while searching for products.' });
+      }
+    });
   } finally {
   }
 }
