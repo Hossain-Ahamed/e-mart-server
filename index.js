@@ -187,7 +187,20 @@ async function run() {
       if (existingUser) {
         return res.send({ message: "user already exists" });
       }
-      const result = await userCollection.insertOne(user);
+      const userData = { ...user, role: "user" };
+      const result = await userCollection.insertOne(userData);
+      const data = {
+        name: user?.name,
+        email: user?.email,
+        img: "",
+        address: "",
+        city: "",
+        phone: "",
+        slug: "",
+        coupon: [],
+        coin: 0,
+      };
+      await profileCollection.insertOne(data);
       res.send(result);
     });
 
@@ -503,51 +516,49 @@ async function run() {
       }
     );
 
-    //Reviews 
+    //Reviews
 
     app.post("/products/:id/reviews", verifyJWT, async (req, res) => {
       const productIdToUpdate = req.params.id;
       const { email, name, rating, comment } = req.body;
-    
+
       try {
         // Check if the product with the specified ID exists
         const product = await productsCollection.findOne({
-          _id: new ObjectId(productIdToUpdate)
+          _id: new ObjectId(productIdToUpdate),
         });
-    
+
         if (!product) {
           return res.status(404).json({ message: "Product not found." });
         }
-    
+
         // Create a new review object
         const review = {
           rating,
           comment,
           name,
           email,
-          createdAt: new Date()
+          createdAt: new Date(),
         };
-    
+
         // Add the review to the product's reviews array
         if (!product.reviews) {
           product.reviews = [];
         }
         product.reviews.push(review);
-    
+
         // Update the product document with the new review
         const result = await productsCollection.updateOne(
           { _id: new ObjectId(productIdToUpdate) },
           { $set: { reviews: product.reviews } }
         );
-    
+
         res.json({ message: "Review added successfully.", result });
       } catch (error) {
         console.error("Error adding review:", error);
         res.status(500).json({ message: "Error adding review." });
       }
     });
-    
-    
 
     // --------------------------------Delivery Charge -------------------------------
 
@@ -1802,6 +1813,13 @@ async function run() {
           CheckkedProdcuts_DataWithProductDetail
         );
 
+        //DELIVERY CHARGE
+        let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
+        const courirerCharge = await getCourierCharge(
+          defaultDeliveryCharge,
+          total
+        );
+
         const discountedData = {
           discountedAmmount: 0.0,
           couponCode: "N/A",
@@ -1809,22 +1827,32 @@ async function run() {
         };
 
         if (couponName) {
-          const { status, data } = await calculateDiscountByCoupon(
-            couponName,
-            email
-          );
-          if (status === 200) {
+          if (couponName === "coin") {
+            const data = await calculateDiscountByCoin(
+              total + courirerCharge,
+              email,
+              res
+            );
             discountedData.couponCode = data?.couponCode;
             discountedData.discountedAmmount = data?.discountedAmmount;
-            discountedData.status = status;
+            profileCollection.updateOne(
+              { _id: userProfile?._id },
+              { $inc: { coin: -data?.discountedAmmount } },
+              { upsert: true }
+            );
+          } else {
+            const { status, data } = await calculateDiscountByCoupon(
+              couponName,
+              email,
+              res
+            );
+            if (status === 200) {
+              discountedData.couponCode = data?.couponCode;
+              discountedData.discountedAmmount = data?.discountedAmmount;
+              discountedData.status = status;
+            }
           }
         }
-        //DELIVERY CHARGE
-        let defaultDeliveryCharge = await getDeliveryCharge_ofSingleUser(email);
-        const courirerCharge = await getCourierCharge(
-          defaultDeliveryCharge,
-          total
-        );
 
         const tempProducts = CheckkedProdcuts_DataWithProductDetail.map((i) => {
           return {
@@ -2189,7 +2217,7 @@ async function run() {
       return Math.floor(discountedAmmount);
     };
 
-    const calculateDiscountByCoupon = async (couponName, email) => {
+    const calculateDiscountByCoupon = async (couponName, email, res) => {
       const couponData = await couponsCollection.findOne({
         couponCode: couponName,
       });
@@ -2261,8 +2289,61 @@ async function run() {
           .send({ message: "unauthorized access from this email" });
       }
 
-      const responseData = await calculateDiscountByCoupon(couponName, email);
+      const responseData = await calculateDiscountByCoupon(
+        couponName,
+        email,
+        res
+      );
       res.status(responseData?.status).send(responseData?.data);
+    });
+
+    const calculateDiscountByCoin = async (finalAmount, email, res) => {
+      const user = await profileCollection.findOne(
+        { email: email },
+        { projection: { _id: 1, coin: 1 } }
+      );
+
+      if (!user) {
+        res.status(404).send({ message: "No user by this name" });
+        return;
+      }
+
+      const responseData = {
+        couponCode: "N/A",
+        discountedAmmount: 0,
+        message: "Coin amount less than 100",
+      };
+      if (user?.coin >= 100) {
+        responseData.couponCode = "coin";
+        responseData.discountedAmmount =
+          user?.coin > finalAmount ? finalAmount : user?.coin;
+        responseData.message = "Yay you got discount";
+        responseData.success = true;
+      }
+
+      // console.log(responseData)
+
+      return responseData;
+    };
+
+    app.post("/get-discount-by-coin", verifyJWT, async (req, res) => {
+      const decodedEmail = req.data?.email;
+      const email = req.query.email;
+
+      if (decodedEmail !== email) {
+        res
+          .status(401)
+          .send({ message: "unauthorized access from this email" });
+      }
+
+      const { finalAmount } = req.body;
+
+      const responseData = await calculateDiscountByCoin(
+        finalAmount,
+        email,
+        res
+      );
+      res.status(200).send(responseData);
     });
 
     //--------------------------------Payment Intent--------------------------------
@@ -2524,7 +2605,7 @@ async function run() {
     app.get(
       "/orders/delivered",
       verifyJWT,
-     
+
       async (req, res) => {
         const query = req.query?.q;
         const size = parseInt(req.query.size);
@@ -3502,6 +3583,14 @@ async function run() {
       }
     );
 
+    //calculation collecting coin
+    const calculateCoin = (amount) => {
+      if (!amount) {
+        return 0;
+      }
+      return Math.floor(amount / 100);
+    };
+
     app.patch(
       "/status-to-delivered",
       verifyJWT,
@@ -3518,8 +3607,10 @@ async function run() {
             { _id: new ObjectId(orderId) },
             {
               projection: {
+                userId: 1,
                 _id: 1,
                 OTP: 1,
+                finalAmount: 1,
               },
             }
           );
@@ -3535,7 +3626,12 @@ async function run() {
             { _id: new ObjectId(orderId) },
             { $set: { status: "Delivered" }, $push: { orderStatus: newStatus } }
           );
-
+          const coin = await calculateCoin(orderDeliver?.finalAmount);
+          profileCollection.updateOne(
+            { _id: orderDeliver?.userId },
+            { $inc: { coin: coin } },
+            { upsert: true }
+          );
           res.status(200).send({ orderData: result });
         } catch {
           (e) => {
@@ -3766,126 +3862,130 @@ async function run() {
           .aggregate(ordersByMonthPipeline)
           .toArray();
 
-        
         const ordersByMonthWithNames = ordersByMonthResult.map((item) => ({
           month: monthNames[item._id.month - 1], // Adjust for 0-based array
           totalOrders: item.totalOrders,
         }));
 
-
         // Calculate total number of orders per category
-  const ordersByCategoryPipeline = [
-    {
-      $match: {
-        "orderStatus.name": "Processing",
-        status: { $ne: "Cancelled" }
-      }
-    },
-    {
-      $unwind: "$orderedItems"
-    },
-    {
-      $lookup: {
-        from: "products", // Use your actual collection name
-        localField: "orderedItems.productName",
-        foreignField: "productTitle",
-        as: "product"
-      }
-    },
-    {
-      $unwind: "$product"
-    },
-    {
-      $project: {
-        category: "$product.category"
-      }
-    },
-    {
-      $group: {
-        _id: {category: "$category"},
-        totalOrders: { $sum: 1 } // Count orders per category
-      }
-    }
-  ];
+        const ordersByCategoryPipeline = [
+          {
+            $match: {
+              "orderStatus.name": "Processing",
+              status: { $ne: "Cancelled" },
+            },
+          },
+          {
+            $unwind: "$orderedItems",
+          },
+          {
+            $lookup: {
+              from: "products", // Use your actual collection name
+              localField: "orderedItems.productName",
+              foreignField: "productTitle",
+              as: "product",
+            },
+          },
+          {
+            $unwind: "$product",
+          },
+          {
+            $project: {
+              category: "$product.category",
+            },
+          },
+          {
+            $group: {
+              _id: { category: "$category" },
+              totalOrders: { $sum: 1 }, // Count orders per category
+            },
+          },
+        ];
 
-  const ordersByCategoryResult = await ordersCollection.aggregate(ordersByCategoryPipeline).toArray();
+        const ordersByCategoryResult = await ordersCollection
+          .aggregate(ordersByCategoryPipeline)
+          .toArray();
 
-  const ordersByCategory = ordersByCategoryResult.map((item) => ({
-    category: item._id.category, // Adjust for 0-based array
-    totalOrders: item.totalOrders,
-  }));
+        const ordersByCategory = ordersByCategoryResult.map((item) => ({
+          category: item._id.category, // Adjust for 0-based array
+          totalOrders: item.totalOrders,
+        }));
 
-  // Calculate total number of "Delivered" orders
-  const deliveredOrdersPipeline = [
-    {
-      $match: {
-        status: "Delivered"
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        totalDeliveredOrders: { $sum: 1 }
-      }
-    }
-  ];
+        // Calculate total number of "Delivered" orders
+        const deliveredOrdersPipeline = [
+          {
+            $match: {
+              status: "Delivered",
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalDeliveredOrders: { $sum: 1 },
+            },
+          },
+        ];
 
-  const deliveredOrdersResult = await ordersCollection.aggregate(deliveredOrdersPipeline).toArray();
+        const deliveredOrdersResult = await ordersCollection
+          .aggregate(deliveredOrdersPipeline)
+          .toArray();
 
-  // Calculate total number of "Cancelled" orders
-  const cancelledOrdersPipeline = [
-    {
-      $match: {
-        status: "Cancelled"
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        totalCancelledOrders: { $sum: 1 }
-      }
-    }
-  ];
+        // Calculate total number of "Cancelled" orders
+        const cancelledOrdersPipeline = [
+          {
+            $match: {
+              status: "Cancelled",
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalCancelledOrders: { $sum: 1 },
+            },
+          },
+        ];
 
-  const cancelledOrdersResult = await ordersCollection.aggregate(cancelledOrdersPipeline).toArray();
+        const cancelledOrdersResult = await ordersCollection
+          .aggregate(cancelledOrdersPipeline)
+          .toArray();
 
+        // Calculate total number of "Pending" orders
+        const pendingOrdersPipeline = [
+          {
+            $match: {
+              $and: [
+                { "orderStatus.name": "Processing" },
+                { status: { $nin: ["Delivered", "Cancelled"] } },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalPendingOrders: { $sum: 1 },
+            },
+          },
+        ];
 
-  // Calculate total number of "Pending" orders
-  const pendingOrdersPipeline = [
-    {
-      $match: {
-        $and: [
-          { "orderStatus.name": "Processing" },
-          { status: { $nin: ["Delivered", "Cancelled"] } }
-        ]
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        totalPendingOrders: { $sum: 1 }
-      }
-    }
-  ];
+        const pendingOrdersResult = await ordersCollection
+          .aggregate(pendingOrdersPipeline)
+          .toArray();
 
-  const pendingOrdersResult = await ordersCollection.aggregate(pendingOrdersPipeline).toArray();
-
-
-  // Combine the results into an array
-  const ordersStatusArray = [
-    {
-      status: "Delivered",
-      totalOrders: deliveredOrdersResult[0]?.totalDeliveredOrders || 0
-    },
-    {
-      status: "Pending",
-      totalOrders: pendingOrdersResult[0]?.totalPendingOrders || 0
-    },
-    {
-      status: "Cancelled",
-      totalOrders: cancelledOrdersResult[0]?.totalCancelledOrders || 0
-    }
-  ];
+        // Combine the results into an array
+        const ordersStatusArray = [
+          {
+            status: "Delivered",
+            totalOrders: deliveredOrdersResult[0]?.totalDeliveredOrders || 0,
+          },
+          {
+            status: "Pending",
+            totalOrders: pendingOrdersResult[0]?.totalPendingOrders || 0,
+          },
+          {
+            status: "Cancelled",
+            totalOrders: cancelledOrdersResult[0]?.totalCancelledOrders || 0,
+          },
+        ];
         res.send({
           users,
           orders,
@@ -3894,30 +3994,33 @@ async function run() {
           finalAmountByMonth: finalAmountByMonthWithNames,
           ordersByMonth: ordersByMonthWithNames,
           ordersByCategory: ordersByCategory,
-          ordersStatusArray
+          ordersStatusArray,
         });
       }
     );
 
-
     //-----------------------Search-----------------------------
 
-    app.post('/search', async (req, res) => {
+    app.post("/search", async (req, res) => {
       const query = req.body.query;
-    
+
       try {
         // Perform a search query on your products collection based on 'query'.
-        const result = await productsCollection.find({
-          $or: [
-            { productTitle: { $regex: query, $options: 'i' } }, // Case-insensitive title search
-            { category: { $regex: query, $options: 'i' } }, // Case-insensitive category search
-            { subCategory: { $regex: query, $options: 'i' } }, // Case-insensitive subCategory search
-          ],
-        }).toArray();
+        const result = await productsCollection
+          .find({
+            $or: [
+              { productTitle: { $regex: query, $options: "i" } }, // Case-insensitive title search
+              { category: { $regex: query, $options: "i" } }, // Case-insensitive category search
+              { subCategory: { $regex: query, $options: "i" } }, // Case-insensitive subCategory search
+            ],
+          })
+          .toArray();
         res.json(result);
       } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'An error occurred while searching for products.' });
+        res
+          .status(500)
+          .json({ error: "An error occurred while searching for products." });
       }
     });
   } finally {
