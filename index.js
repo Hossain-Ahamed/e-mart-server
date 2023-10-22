@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
@@ -25,6 +27,40 @@ app.use((req, res, next) => {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+
+const auth = {
+  auth: {
+    api_key: process.env.EMAIL_PRIVATE_KEY,
+    domain: process.env.EMAIL_DOMAIN
+  }
+}
+
+const transporter = nodemailer.createTransport(mg(auth));
+
+// send email
+const sendEmail = OTP => {
+  transporter.sendMail({
+    from: "shantamahfuza2017@gmail.com",
+    to: "mdhasan.19100062@rpsu.edu.bd",
+    subject: "Your OTP",
+    text: "Hello",
+    html: 
+    `
+    <div>
+    <h2>Your OTP</h2>
+    </div>
+    `
+  },
+  function (error, info) {
+    if(error){
+      console.log("Email sending error",error);
+    }
+    else {
+      console.log('Email sent: ' + info.response);
+    }
+  })
+}
 
 function checkPermission(allowedRoles) {
   return (req, res, next) => {
@@ -95,11 +131,30 @@ async function run() {
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const userData = await userCollection.findOne({ email: user?.email });
+      let userData = await userCollection.findOne({ email: user?.email });
+      console.log(135, userData)
+      if(!userData){
+        userData = {
+          email : user?.email,
+          name: user?.displayName,
+          role: "user"
+        }
+        await userCollection.insertOne(userData)
+        await profileCollection.insertOne(userData)
+      }
       const token = jwt.sign(
-        { email: user.email, role: userData?.role },
+        userData,
         process.env.ACCESS_TOKEN_SECRET
       );
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decodedToken) => {
+        if (err) {
+          //return res.status(403).json({ message: "Invalid token." });
+        }
+        console.log(144, decodedToken)
+       //req.data = decodedToken; // Assuming the email is stored in the token's payload
+       // next();
+      });
+      console.log("JWT", token)
 
       res.cookie("_et", token, {
         httpOnly: true,
@@ -646,7 +701,11 @@ async function run() {
           .find({ category: category?.name })
           .toArray();
         //console.log(subCategories)
-        res.send({ category: category, subcategory: subCategories });
+        const products = await productsCollection
+          .find({ category: category?.name })
+          .toArray();
+        //console.log(subCategories)
+        res.send({ category: category, subcategory: subCategories, products: products });
       } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
@@ -740,10 +799,46 @@ async function run() {
       }
     );
 
+    app.delete("/delete-top-banner/:slug/:index", verifyJWT, checkPermission(["admin", "Product Manager"]), async (req, res) => {
+      const categorySlugToUpdate = req.params.slug;
+      const { index } = req.params; // Get the index of the image to delete
+    
+      try {
+        // Find the category document by slug
+        const category = await categoryCollection.findOne({ slug: categorySlugToUpdate });
+    
+        if (!category) {
+          return res.status(404).json({ message: "Category not found." });
+        }
+    
+        // Check if the index is within the valid range
+        if (index < 0 || index >= category.topBannerImage.length) {
+          return res.status(400).json({ message: "Invalid index." });
+        }
+    
+        // Remove the image at the specified index
+        category.topBannerImage.splice(index, 1);
+    
+        // Update the category document with the modified topBannerImage array
+        const result = await categoryCollection.updateOne(
+          { slug: categorySlugToUpdate },
+          { $set: { topBannerImage: category.topBannerImage } }
+        );
+    
+        res.json({ message: "Image deleted successfully.", result });
+      } catch (error) {
+        console.error("Error deleting image:", error);
+        res.status(500).json({ message: "Error deleting image." });
+      }
+    });
+    
+    
+    
+
     app.patch(
       "/upload-category/:slug/layout",
       verifyJWT,
-      verifyAdmin,
+      checkPermission(["admin", "Product Manager"]),
       async (req, res) => {
         const categorySlugToUpdate = req.params.slug;
         console.log(req.params);
@@ -989,7 +1084,7 @@ async function run() {
     app.post(
       "/upload-sub-category",
       verifyJWT,
-      verifyAdmin,
+      checkPermission(["admin", "Product Manager"]),
       async (req, res) => {
         const newSubCategory = req.body;
         //console.log(newSubCategory, "new");
@@ -1010,7 +1105,7 @@ async function run() {
     app.patch(
       "/upload-sub-category/:slug/layout",
       verifyJWT,
-      verifyAdmin,
+      checkPermission(["admin", "Product Manager"]),
       async (req, res) => {
         const subCategorySlugToUpdate = req.params.slug;
         console.log(req.params);
@@ -1042,7 +1137,7 @@ async function run() {
     app.patch(
       "/upload-sub-category/:slug",
       verifyJWT,
-      verifyAdmin,
+      checkPermission(["admin", "Product Manager"]),
       async (req, res) => {
         const subCategorySlugToUpdate = req.params.slug;
         const {
@@ -1476,8 +1571,10 @@ async function run() {
       }
 
       try {
-        const cart = await cartCollection.findOne({ email });
-
+        let cart = await cartCollection.findOne({ email });
+        if(!cart){
+          cart = {cart: []}
+        }
         const cartItemsWithDetails = await Promise.all(
           cart.cart.map(async (item) => {
             const product = await productsCollection.findOne(
@@ -3153,6 +3250,8 @@ async function run() {
             finalAmount: 1,
             status: 1,
             orderStatus: 1,
+            transactionId: 1,
+            typeOfPayment: 1
           })
           .toArray();
         res.status(200).send({ allOrders: result });
@@ -3564,6 +3663,7 @@ async function run() {
         }
         try {
           const OTP = await generateOTP();
+
           const newStatus = {
             name: "Ready To Delivery",
             message: `${req.body?.message}`,
@@ -3573,6 +3673,8 @@ async function run() {
             { _id: new ObjectId(orderId) },
             { $set: { OTP: OTP }, $push: { orderStatus: newStatus } }
           );
+
+          sendEmail(OTP);
 
           res.status(200).send({ orderData: result });
         } catch {
