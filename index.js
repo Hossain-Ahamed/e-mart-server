@@ -114,6 +114,7 @@ async function run() {
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
     const productsCollection = client.db("e-mart").collection("products");
+    const reviewsCollection = client.db("e-mart").collection("reviews");
     const bannersCollection = client.db("e-mart").collection("banners");
     const menCategoryCollection = client.db("e-mart").collection("menCategory");
     const womenCategoryCollection = client
@@ -506,15 +507,34 @@ async function run() {
       const query = {};
       const cursor = productsCollection.find(query);
       const products = await cursor.toArray();
-      res.send(products);
+    
+      // Fetch reviews for each product
+      const productsWithReviews = [];
+      for (const product of products) {
+        const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+        const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+        product.reviews = reviews;
+        productsWithReviews.push(product);
+      }
+    
+      res.send(productsWithReviews);
     });
+    
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       try {
         const query = { _id: new ObjectId(id) };
         const product = await productsCollection.findOne(query);
+    
         if (product) {
+          // Fetch the reviews for the product from the reviewsCollection
+          const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+          const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+    
+          // Add the reviews array to the product data
+          product.reviews = reviews;
+    
           res.send(product);
         } else {
           res.status(404).send({ message: "Product not found." });
@@ -523,6 +543,7 @@ async function run() {
         res.status(500).send({ message: "Internal server error." });
       }
     });
+    
 
     app.post(
       "/products",
@@ -573,47 +594,59 @@ async function run() {
 
     //Reviews
 
+    app.get("/products/:id/reviews", async (req, res) => {
+      const productIdToRetrieve = req.params.id;
+    
+      try {
+        // Find reviews for the product with the specified ID
+        const reviews = await reviewsCollection.find({ productId: new ObjectId(productIdToRetrieve) }).toArray();
+    
+        if (reviews.length === 0) {
+          return res.status(404).json({ message: "No reviews found for this product." });
+        }
+    
+        res.json({ reviews });
+      } catch (error) {
+        console.error("Error retrieving reviews:", error);
+        res.status(500).json({ message: "Error retrieving reviews." });
+      }
+    });
+    
+
     app.post("/products/:id/reviews", verifyJWT, async (req, res) => {
       const productIdToUpdate = req.params.id;
       const { email, name, rating, comment } = req.body;
-
+    
       try {
         // Check if the product with the specified ID exists
         const product = await productsCollection.findOne({
           _id: new ObjectId(productIdToUpdate),
         });
-
+    
         if (!product) {
           return res.status(404).json({ message: "Product not found." });
         }
-
+    
         // Create a new review object
         const review = {
+          productId: new ObjectId(productIdToUpdate), // Reference to the product
           rating,
           comment,
           name,
           email,
           createdAt: new Date(),
         };
-
-        // Add the review to the product's reviews array
-        if (!product.reviews) {
-          product.reviews = [];
-        }
-        product.reviews.push(review);
-
-        // Update the product document with the new review
-        const result = await productsCollection.updateOne(
-          { _id: new ObjectId(productIdToUpdate) },
-          { $set: { reviews: product.reviews } }
-        );
-
+    
+        // Insert the review document into the reviewsCollection
+        const result = await reviewsCollection.insertOne(review);
+    
         res.json({ message: "Review added successfully.", result });
       } catch (error) {
         console.error("Error adding review:", error);
         res.status(500).json({ message: "Error adding review." });
       }
     });
+    
 
     // --------------------------------Delivery Charge -------------------------------
 
@@ -693,23 +726,30 @@ async function run() {
       try {
         const query = { slug: slug };
         const category = await categoryCollection.findOne(query);
-
+    
         if (!category) {
           return res.status(404).send({ message: "Category not found." });
         }
-        const subCategories = await subCategoryCollection
-          .find({ category: category?.name })
-          .toArray();
-        //console.log(subCategories)
-        const products = await productsCollection
-          .find({ category: category?.name })
-          .toArray();
-        //console.log(subCategories)
-        res.send({ category: category, subcategory: subCategories, products: products });
+    
+        const subCategories = await subCategoryCollection.find({ category: category.name }).toArray();
+    
+        const products = await productsCollection.find({ category: category.name }).toArray();
+    
+        // Fetch reviews for each product
+        const productsWithReviews = [];
+        for (const product of products) {
+          const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+          const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+          product.reviews = reviews;
+          productsWithReviews.push(product);
+        }
+    
+        res.send({ category: category, subcategory: subCategories, products: productsWithReviews });
       } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
+    
 
     app.post(
       "/categories",
@@ -1067,19 +1107,28 @@ async function run() {
       try {
         const query = { slug: slug };
         const subCategory = await subCategoryCollection.findOne(query);
-
+    
         if (!subCategory) {
           return res.status(404).send({ message: "SubCategory not found." });
         }
-        const products = await productsCollection
-          .find({ subCategory: subCategory?.name })
-          .toArray();
-        //console.log(subCategories)
-        res.send({ subCategory: subCategory, products: products });
+    
+        const products = await productsCollection.find({ subCategory: subCategory.name }).toArray();
+    
+        // Fetch reviews for each product
+        const productsWithReviews = [];
+        for (const product of products) {
+          const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+          const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+          product.reviews = reviews;
+          productsWithReviews.push(product);
+        }
+    
+        res.send({ subCategory: subCategory, products: productsWithReviews });
       } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
+    
 
     app.post(
       "/upload-sub-category",
