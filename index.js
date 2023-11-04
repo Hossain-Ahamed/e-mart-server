@@ -3700,10 +3700,13 @@ async function run() {
           const userPhone = order?.userPhone;
           const deliveryPartnerName = order?.deliveryPartner?.name; // Assumes 'deliveryPartner' is an embedded document
 
+          // Remove the "+88" prefix from userPhone if it exists
+          const phone = userPhone.replace("+88", "");
+
           // Prepare the SMS parameters
           const greenwebsms = new URLSearchParams();
           greenwebsms.append("token", `${process.env.SMS_TOKEN}`);
-          greenwebsms.append("to", `+88${userPhone}`); // Replace with the recipient's phone number
+          greenwebsms.append("to", `+88${phone}`); // Replace with the recipient's phone number
           greenwebsms.append(
             "message",
             `E-Mart থেকে আপনার অর্ডার আমাদের এজেন্ট ${deliveryPartnerName} আজ ডেলিভারি করবে। আপনার OTP হল ${OTP} ।`
