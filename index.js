@@ -2,8 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const nodemailer = require('nodemailer');
-const mg = require('nodemailer-mailgun-transport');
+const axios = require("axios");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
@@ -28,39 +27,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
-
 const auth = {
   auth: {
     api_key: process.env.EMAIL_PRIVATE_KEY,
-    domain: process.env.EMAIL_DOMAIN
-  }
-}
-
-const transporter = nodemailer.createTransport(mg(auth));
-
-// send email
-const sendEmail = OTP => {
-  transporter.sendMail({
-    from: "shantamahfuza2017@gmail.com",
-    to: "mdhasan.19100062@rpsu.edu.bd",
-    subject: "Your OTP",
-    text: "Hello",
-    html: 
-    `
-    <div>
-    <h2>Your OTP</h2>
-    </div>
-    `
+    domain: process.env.EMAIL_DOMAIN,
   },
-  function (error, info) {
-    if(error){
-      console.log("Email sending error",error);
-    }
-    else {
-      console.log('Email sent: ' + info.response);
-    }
-  })
-}
+};
 
 function checkPermission(allowedRoles) {
   return (req, res, next) => {
@@ -133,29 +105,30 @@ async function run() {
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       let userData = await userCollection.findOne({ email: user?.email });
-      console.log(135, userData)
-      if(!userData){
+      console.log(135, userData);
+      if (!userData) {
         userData = {
-          email : user?.email,
+          email: user?.email,
           name: user?.displayName,
-          role: "user"
-        }
-        await userCollection.insertOne(userData)
-        await profileCollection.insertOne(userData)
+          role: "user",
+        };
+        await userCollection.insertOne(userData);
+        await profileCollection.insertOne(userData);
       }
-      const token = jwt.sign(
-        userData,
-        process.env.ACCESS_TOKEN_SECRET
-      );
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decodedToken) => {
-        if (err) {
-          //return res.status(403).json({ message: "Invalid token." });
+      const token = jwt.sign(userData, process.env.ACCESS_TOKEN_SECRET);
+      jwt.verify(
+        token,
+        process.env.ACCESS_TOKEN_SECRET,
+        (err, decodedToken) => {
+          if (err) {
+            //return res.status(403).json({ message: "Invalid token." });
+          }
+          console.log(144, decodedToken);
+          //req.data = decodedToken; // Assuming the email is stored in the token's payload
+          // next();
         }
-        console.log(144, decodedToken)
-       //req.data = decodedToken; // Assuming the email is stored in the token's payload
-       // next();
-      });
-      console.log("JWT", token)
+      );
+      console.log("JWT", token);
 
       res.cookie("_et", token, {
         httpOnly: true,
@@ -507,7 +480,7 @@ async function run() {
       const query = {};
       const cursor = productsCollection.find(query);
       const products = await cursor.toArray();
-    
+
       // Fetch reviews for each product
       const productsWithReviews = [];
       for (const product of products) {
@@ -516,25 +489,24 @@ async function run() {
         product.reviews = reviews;
         productsWithReviews.push(product);
       }
-    
+
       res.send(productsWithReviews);
     });
-    
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       try {
         const query = { _id: new ObjectId(id) };
         const product = await productsCollection.findOne(query);
-    
+
         if (product) {
           // Fetch the reviews for the product from the reviewsCollection
           const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
           const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-    
+
           // Add the reviews array to the product data
           product.reviews = reviews;
-    
+
           res.send(product);
         } else {
           res.status(404).send({ message: "Product not found." });
@@ -543,7 +515,6 @@ async function run() {
         res.status(500).send({ message: "Internal server error." });
       }
     });
-    
 
     app.post(
       "/products",
@@ -596,37 +567,34 @@ async function run() {
 
     app.get("/products/:id/reviews", async (req, res) => {
       const productIdToRetrieve = req.params.id;
-    
       try {
         // Find reviews for the product with the specified ID
-        const reviews = await reviewsCollection.find({ productId: new ObjectId(productIdToRetrieve) }).toArray();
-    
+        const reviews = await reviewsCollection
+          .find({ productId: new ObjectId(productIdToRetrieve) })
+          .toArray();
         if (reviews.length === 0) {
-          return res.status(404).json({ message: "No reviews found for this product." });
+          return res
+            .status(404)
+            .json({ message: "No reviews found for this product." });
         }
-    
         res.json({ reviews });
       } catch (error) {
         console.error("Error retrieving reviews:", error);
         res.status(500).json({ message: "Error retrieving reviews." });
       }
     });
-    
 
     app.post("/products/:id/reviews", verifyJWT, async (req, res) => {
       const productIdToUpdate = req.params.id;
       const { email, name, rating, comment } = req.body;
-    
       try {
         // Check if the product with the specified ID exists
         const product = await productsCollection.findOne({
           _id: new ObjectId(productIdToUpdate),
         });
-    
         if (!product) {
           return res.status(404).json({ message: "Product not found." });
         }
-    
         // Create a new review object
         const review = {
           productId: new ObjectId(productIdToUpdate), // Reference to the product
@@ -636,17 +604,14 @@ async function run() {
           email,
           createdAt: new Date(),
         };
-    
         // Insert the review document into the reviewsCollection
         const result = await reviewsCollection.insertOne(review);
-    
         res.json({ message: "Review added successfully.", result });
       } catch (error) {
         console.error("Error adding review:", error);
         res.status(500).json({ message: "Error adding review." });
       }
     });
-    
 
     // --------------------------------Delivery Charge -------------------------------
 
@@ -726,15 +691,19 @@ async function run() {
       try {
         const query = { slug: slug };
         const category = await categoryCollection.findOne(query);
-    
+
         if (!category) {
           return res.status(404).send({ message: "Category not found." });
         }
-    
-        const subCategories = await subCategoryCollection.find({ category: category.name }).toArray();
-    
-        const products = await productsCollection.find({ category: category.name }).toArray();
-    
+
+        const subCategories = await subCategoryCollection
+          .find({ category: category.name })
+          .toArray();
+
+        const products = await productsCollection
+          .find({ category: category.name })
+          .toArray();
+
         // Fetch reviews for each product
         const productsWithReviews = [];
         for (const product of products) {
@@ -743,13 +712,16 @@ async function run() {
           product.reviews = reviews;
           productsWithReviews.push(product);
         }
-    
-        res.send({ category: category, subcategory: subCategories, products: productsWithReviews });
+
+        res.send({
+          category: category,
+          subcategory: subCategories,
+          products: productsWithReviews,
+        });
       } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
-    
 
     app.post(
       "/categories",
@@ -839,41 +811,45 @@ async function run() {
       }
     );
 
-    app.delete("/delete-top-banner/:slug/:index", verifyJWT, checkPermission(["admin", "Product Manager"]), async (req, res) => {
-      const categorySlugToUpdate = req.params.slug;
-      const { index } = req.params; // Get the index of the image to delete
-    
-      try {
-        // Find the category document by slug
-        const category = await categoryCollection.findOne({ slug: categorySlugToUpdate });
-    
-        if (!category) {
-          return res.status(404).json({ message: "Category not found." });
+    app.delete(
+      "/delete-top-banner/:slug/:index",
+      verifyJWT,
+      checkPermission(["admin", "Product Manager"]),
+      async (req, res) => {
+        const categorySlugToUpdate = req.params.slug;
+        const { index } = req.params; // Get the index of the image to delete
+
+        try {
+          // Find the category document by slug
+          const category = await categoryCollection.findOne({
+            slug: categorySlugToUpdate,
+          });
+
+          if (!category) {
+            return res.status(404).json({ message: "Category not found." });
+          }
+
+          // Check if the index is within the valid range
+          if (index < 0 || index >= category.topBannerImage.length) {
+            return res.status(400).json({ message: "Invalid index." });
+          }
+
+          // Remove the image at the specified index
+          category.topBannerImage.splice(index, 1);
+
+          // Update the category document with the modified topBannerImage array
+          const result = await categoryCollection.updateOne(
+            { slug: categorySlugToUpdate },
+            { $set: { topBannerImage: category.topBannerImage } }
+          );
+
+          res.json({ message: "Image deleted successfully.", result });
+        } catch (error) {
+          console.error("Error deleting image:", error);
+          res.status(500).json({ message: "Error deleting image." });
         }
-    
-        // Check if the index is within the valid range
-        if (index < 0 || index >= category.topBannerImage.length) {
-          return res.status(400).json({ message: "Invalid index." });
-        }
-    
-        // Remove the image at the specified index
-        category.topBannerImage.splice(index, 1);
-    
-        // Update the category document with the modified topBannerImage array
-        const result = await categoryCollection.updateOne(
-          { slug: categorySlugToUpdate },
-          { $set: { topBannerImage: category.topBannerImage } }
-        );
-    
-        res.json({ message: "Image deleted successfully.", result });
-      } catch (error) {
-        console.error("Error deleting image:", error);
-        res.status(500).json({ message: "Error deleting image." });
       }
-    });
-    
-    
-    
+    );
 
     app.patch(
       "/upload-category/:slug/layout",
@@ -1107,13 +1083,15 @@ async function run() {
       try {
         const query = { slug: slug };
         const subCategory = await subCategoryCollection.findOne(query);
-    
+
         if (!subCategory) {
           return res.status(404).send({ message: "SubCategory not found." });
         }
-    
-        const products = await productsCollection.find({ subCategory: subCategory.name }).toArray();
-    
+
+        const products = await productsCollection
+          .find({ subCategory: subCategory.name })
+          .toArray();
+
         // Fetch reviews for each product
         const productsWithReviews = [];
         for (const product of products) {
@@ -1122,13 +1100,12 @@ async function run() {
           product.reviews = reviews;
           productsWithReviews.push(product);
         }
-    
+
         res.send({ subCategory: subCategory, products: productsWithReviews });
       } catch (error) {
         res.status(500).send({ message: "Internal server error." });
       }
     });
-    
 
     app.post(
       "/upload-sub-category",
@@ -1621,8 +1598,8 @@ async function run() {
 
       try {
         let cart = await cartCollection.findOne({ email });
-        if(!cart){
-          cart = {cart: []}
+        if (!cart) {
+          cart = { cart: [] };
         }
         const cartItemsWithDetails = await Promise.all(
           cart.cart.map(async (item) => {
@@ -3300,7 +3277,7 @@ async function run() {
             status: 1,
             orderStatus: 1,
             transactionId: 1,
-            typeOfPayment: 1
+            typeOfPayment: 1,
           })
           .toArray();
         res.status(200).send({ allOrders: result });
@@ -3711,25 +3688,50 @@ async function run() {
           return res.status(404).send({ message: "Invalid Request!" });
         }
         try {
-          const OTP = await generateOTP();
+          // Generate a new OTP
+          const OTP = generateOTP();
+
+          // Retrieve the order details from ordersCollection based on orderId
+          const order = await ordersCollection.findOne({
+            _id: new ObjectId(orderId),
+          });
+
+          // Get the userPhone and deliveryPartner name from the order document
+          const userPhone = order?.userPhone;
+          const deliveryPartnerName = order?.deliveryPartner?.name; // Assumes 'deliveryPartner' is an embedded document
+
+          // Prepare the SMS parameters
+          const greenwebsms = new URLSearchParams();
+          greenwebsms.append("token", `${process.env.SMS_TOKEN}`);
+          greenwebsms.append("to", `+88${userPhone}`); // Replace with the recipient's phone number
+          greenwebsms.append(
+            "message",
+            `E-Mart থেকে আপনার অর্ডার আমাদের এজেন্ট ${deliveryPartnerName} আজ ডেলিভারি করবে। আপনার OTP হল ${OTP} ।`
+          ); // Include the generated OTP in the message
+
+          // Send the OTP via SMS
+          const smsResponse = await axios.post(
+            "http://api.greenweb.com.bd/api.php",
+            greenwebsms
+          );
+          console.log(smsResponse.data); // Log the response from the SMS API
 
           const newStatus = {
             name: "Ready To Delivery",
             message: `${req.body?.message}`,
             time: new Date().toISOString(),
           };
+
+          // Update the order with the generated OTP
           const result = await ordersCollection.updateOne(
             { _id: new ObjectId(orderId) },
             { $set: { OTP: OTP }, $push: { orderStatus: newStatus } }
           );
 
-          sendEmail(OTP);
-
           res.status(200).send({ orderData: result });
-        } catch {
-          (e) => {
-            res.status(500).send({ message: "error in server" });
-          };
+        } catch (e) {
+          console.error(e); // Log the error
+          res.status(500).send({ message: "Error in server" });
         }
       }
     );
