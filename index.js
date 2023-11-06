@@ -527,6 +527,24 @@ async function run() {
       }
     );
 
+    app.put("/products/:id", verifyJWT, checkPermission(["admin", "Product Manager"]), async (req, res) => {
+      const id = req.params.id;
+      const updatedProduct = req.body; // Updated product data
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await productsCollection.updateOne(query, { $set: updatedProduct });
+    
+        if (result.modifiedCount > 0) {
+          res.status(200).send({ message: "Product updated successfully" });
+        } else {
+          res.status(404).send({ message: "Product not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+    
+
     app.patch(
       "/products/:id",
       verifyJWT,
