@@ -10,7 +10,7 @@ const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: ["http://localhost:5173", "http://192.168.0.106:5173"],
   credentials: true,
 };
 
@@ -216,7 +216,7 @@ async function run() {
       if (existingUser) {
         return res.send({ message: "user already exists" });
       }
-      const userData = { ...user, role: "user" };
+      const userData = { name: user?.name, email: user?.email, role: "user" };
       const result = await userCollection.insertOne(userData);
       const data = {
         name: user?.name,
@@ -476,22 +476,110 @@ async function run() {
 
     //----------------------------- Products ----------------------------------
 
-    app.get("/products", async (req, res) => {
-      const query = {};
-      const cursor = productsCollection.find(query);
-      const products = await cursor.toArray();
+    app.get(
+      "/products",
+      verifyJWT,
+      async (req, res) => {
+        const query = req.query && req.query.q;
+        const size = parseInt(req.query.size);
+        const currentPage = parseInt(req.query.currentPage);
+        //console.log(query, size, currentPage)
+        let count = 0;
+        let result = []; 
+            result = await productsCollection
+              .find({
+                $and: [
+                  {
+                    $or: [
+                      { productTitle: { $regex: query, $options: "i" } }
+                    ],
+                  },
+                ],
+              })
+              .sort({ _id: -1 })
+              .skip(currentPage * size)
+              .limit(size)
+              .project({
+                _id: 1,
+                productTitle: 1,
+                image: 1,
+                mainPrice: 1,
+                price: 1,
+                category: 1,
+                subCategory: 1,
+                size: 1,
+                quantity: 1,
+                weight: 1,
+                productSlug: 1,
+              })
+              .toArray();
 
-      // Fetch reviews for each product
-      const productsWithReviews = [];
-      for (const product of products) {
-        const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
-        const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-        product.reviews = reviews;
-        productsWithReviews.push(product);
+            count = await productsCollection.countDocuments({
+              $and: [
+                {
+                  $or: [
+                    { productTitle: { $regex: query, $options: "i" } }
+                  ],
+                },
+              ],
+            });
+        res.send({ products: result || [], count: count });
       }
+    )
 
-      res.send(productsWithReviews);
-    });
+    // app.get("/products", async (req, res) => {
+    //   const searchQuery = req.query.search || ''; // Extract the search query parameter from the request URL
+    //   const query = {};
+    //   if (searchQuery) {
+    //     // If there is a search query, add a condition to filter products
+    //     query.productTitle = { $regex: new RegExp(searchQuery, 'i') };
+    //   }
+    //   const cursor = productsCollection.find(query);
+    //   const products = await cursor.toArray();
+
+    //   // Fetch reviews for each product
+    //   const productsWithReviews = [];
+    //   for (const product of products) {
+    //     const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+    //     const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+    //     product.reviews = reviews;
+    //     productsWithReviews.push(product);
+    //   }
+
+    //   res.send(productsWithReviews);
+    // });
+
+  //   const productsPerPage = 15; // Number of products to load per page
+  //   let currentPage = 1; // Initialize the current page
+
+  //   app.get("/products", async (req, res) => {
+  //     const page = parseInt(req.query.page) || 1;
+  // const perPage = parseInt(req.query.perPage) || 15;
+  // const skip = (page - 1) * perPage;
+  // const query = {};
+  
+  //     // Use skip and limit to fetch a batch of products
+  //   const productsCursor = productsCollection.find(query).skip(skip).limit(perPage);
+  //   const products = await productsCursor.toArray();
+
+  //   // Fetch reviews for each product and add them to the products
+  //   const productsWithReviews = await Promise.all(
+  //     products.map(async (product) => {
+  //       const reviewsQuery = { productId: product._id };
+  //       const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+  //       product.reviews = reviews;
+  //       return product;
+  //     })
+  //   );
+  
+  //     // Calculate the total count of products without limit and skip
+  //     const totalCount = await productsCollection.countDocuments(query);
+  
+  //     res.send({ products: productsWithReviews, totalCount });
+  // });
+  
+    
+
 
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
