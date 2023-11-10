@@ -476,6 +476,25 @@ async function run() {
 
     //----------------------------- Products ----------------------------------
 
+    app.get('/api/products', async (req, res) => {
+      try {
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = 10;
+
+  
+          const products = await productsCollection
+          .find()
+          .skip((page - 1) * pageSize)
+          .limit(pageSize)
+          .toArray();
+
+      res.json(products);
+      } catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    } 
+  });
+
     app.get(
       "/products",
       verifyJWT,
