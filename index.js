@@ -488,7 +488,16 @@ async function run() {
           .limit(pageSize)
           .toArray();
 
-      res.json(products);
+    //   // Fetch reviews for each product
+      const productsWithReviews = [];
+      for (const product of products) {
+        const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+        const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+        product.reviews = reviews;
+        productsWithReviews.push(product);
+      }
+
+      res.json(productsWithReviews);
       } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -499,7 +508,7 @@ async function run() {
       "/products",
       verifyJWT,
       async (req, res) => {
-        const query = req.query && req.query.q;
+        const query = req.query && String(req.query.q);
         const size = parseInt(req.query.size);
         const currentPage = parseInt(req.query.currentPage);
         //console.log(query, size, currentPage)
@@ -546,60 +555,47 @@ async function run() {
       }
     )
 
-    // app.get("/products", async (req, res) => {
-    //   const searchQuery = req.query.search || ''; // Extract the search query parameter from the request URL
-    //   const query = {};
-    //   if (searchQuery) {
-    //     // If there is a search query, add a condition to filter products
-    //     query.productTitle = { $regex: new RegExp(searchQuery, 'i') };
-    //   }
-    //   const cursor = productsCollection.find(query);
-    //   const products = await cursor.toArray();
-
-    //   // Fetch reviews for each product
-    //   const productsWithReviews = [];
-    //   for (const product of products) {
-    //     const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
-    //     const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-    //     product.reviews = reviews;
-    //     productsWithReviews.push(product);
-    //   }
-
-    //   res.send(productsWithReviews);
-    // });
-
-  //   const productsPerPage = 15; // Number of products to load per page
-  //   let currentPage = 1; // Initialize the current page
-
-  //   app.get("/products", async (req, res) => {
-  //     const page = parseInt(req.query.page) || 1;
-  // const perPage = parseInt(req.query.perPage) || 15;
-  // const skip = (page - 1) * perPage;
-  // const query = {};
+  //   app.get(
+  //     "/products-reviews",
+  //     verifyJWT,
+  //     async (req, res) => {
+  //       try {
+  //       const query = req.query && String(req.query.q);
+  //       const size = parseInt(req.query.size);
+  //       const currentPage = parseInt(req.query.currentPage);
+  //       let products = []; 
+  //       products = await productsCollection
+  //         .find({
+  //           $and: [
+  //             {
+  //               $or: [
+  //                 { productTitle: { $regex: query, $options: "i" } }
+  //               ],
+  //             },
+  //           ],
+  //         })
+  //         .sort({ _id: -1 })
+  //         .skip(currentPage * size)
+  //         .limit(size)
+  //         .toArray();
   
-  //     // Use skip and limit to fetch a batch of products
-  //   const productsCursor = productsCollection.find(query).skip(skip).limit(perPage);
-  //   const products = await productsCursor.toArray();
+  //     //   // Fetch reviews for each product
+  //       const productsWithReviews = [];
+  //       for (const product of products) {
+  //         const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
+  //         const reviews = await reviewsCollection.find(reviewsQuery).toArray();
+  //         product.reviews = reviews;
+  //         productsWithReviews.push(product);
+  //       }
+  
+  //       res.json(productsWithReviews);
+  //       } catch (error) {
+  //         console.error('Error fetching products:', error);
+  //         res.status(500).json({ error: 'Internal Server Error' });
+  //     } 
+  // })
 
-  //   // Fetch reviews for each product and add them to the products
-  //   const productsWithReviews = await Promise.all(
-  //     products.map(async (product) => {
-  //       const reviewsQuery = { productId: product._id };
-  //       const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-  //       product.reviews = reviews;
-  //       return product;
-  //     })
-  //   );
-  
-  //     // Calculate the total count of products without limit and skip
-  //     const totalCount = await productsCollection.countDocuments(query);
-  
-  //     res.send({ products: productsWithReviews, totalCount });
-  // });
-  
     
-
-
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       try {
