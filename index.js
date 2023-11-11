@@ -107,13 +107,14 @@ async function run() {
       let userData = await userCollection.findOne({ email: user?.email });
       console.log(135, userData);
       if (!userData) {
+        console.log(110)
         userData = {
           email: user?.email,
           name: user?.displayName,
           role: "user",
         };
-        await userCollection.insertOne(userData);
-        await profileCollection.insertOne(userData);
+        // await userCollection.insertOne(userData);
+        // await profileCollection.insertOne(userData);
       }
       const token = jwt.sign(userData, process.env.ACCESS_TOKEN_SECRET);
       jwt.verify(
@@ -209,7 +210,7 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
-      //console.log(user);
+      console.log(user);
       const query = { email: user.email };
       //console.log(query);
       const existingUser = await userCollection.findOne(query);
@@ -232,6 +233,16 @@ async function run() {
       await profileCollection.insertOne(data);
       res.send(result);
     });
+
+    app.delete("/delete-for-firebase-error/:email", async( req, res) => {
+      const email = req.params.email;
+      console.log(email, 239)
+      if(email){
+        await userCollection.deleteMany({email: email})
+        await profileCollection.deleteMany({email: email})
+      }
+      res.status(200).send({message: "Deleted"})
+    })
 
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -480,29 +491,40 @@ async function run() {
       try {
         const page = parseInt(req.query.page) || 1;
         const pageSize = 10;
-
-  
-          const products = await productsCollection
+    
+        const products = await productsCollection
           .find()
           .skip((page - 1) * pageSize)
           .limit(pageSize)
           .toArray();
-
-    //   // Fetch reviews for each product
-      const productsWithReviews = [];
-      for (const product of products) {
-        const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
-        const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-        product.reviews = reviews;
-        productsWithReviews.push(product);
-      }
-
-      res.json(productsWithReviews);
+    
+        // Get the list of product IDs for the products on the current page
+        const productIds = products.map(product => product._id);
+    
+        // Use aggregation pipeline to fetch reviews for the products on the current page
+        const pipeline = [
+          {
+            $match: {
+              productId: { $in: productIds }
+            }
+          }
+        ];
+    
+        const reviews = await reviewsCollection.aggregate(pipeline).toArray();
+    
+        // Map the reviews to their respective products
+        const productsWithReviews = products.map(product => {
+          product.reviews = reviews.filter(review => review.productId.equals(product._id));
+          return product;
+        });
+    
+        res.json(productsWithReviews);
       } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Internal Server Error' });
-    } 
-  });
+      }
+    });
+    
 
     app.get(
       "/products",
@@ -812,37 +834,48 @@ async function run() {
       try {
         const query = { slug: slug };
         const category = await categoryCollection.findOne(query);
-
+    
         if (!category) {
           return res.status(404).send({ message: "Category not found." });
         }
-
+    
         const subCategories = await subCategoryCollection
           .find({ category: category.name })
           .toArray();
-
+    
         const products = await productsCollection
           .find({ category: category.name })
           .toArray();
-
-        // Fetch reviews for each product
-        const productsWithReviews = [];
-        for (const product of products) {
-          const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
-          const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-          product.reviews = reviews;
-          productsWithReviews.push(product);
-        }
-
+    
+        // Use aggregation pipeline to fetch reviews for the products
+        const productIds = products.map(product => product._id);
+    
+        const pipeline = [
+          {
+            $match: {
+              productId: { $in: productIds }
+            }
+          }
+        ];
+    
+        const reviews = await reviewsCollection.aggregate(pipeline).toArray();
+    
+        // Map the reviews to their respective products
+        const productsWithReviews = products.map(product => {
+          product.reviews = reviews.filter(review => review.productId.equals(product._id));
+          return product;
+        });
+    
         res.send({
           category: category,
           subcategory: subCategories,
           products: productsWithReviews,
         });
       } catch (error) {
+        console.error('Error fetching category details:', error);
         res.status(500).send({ message: "Internal server error." });
       }
-    });
+    });    
 
     app.post(
       "/categories",
@@ -1204,29 +1237,41 @@ async function run() {
       try {
         const query = { slug: slug };
         const subCategory = await subCategoryCollection.findOne(query);
-
+    
         if (!subCategory) {
           return res.status(404).send({ message: "SubCategory not found." });
         }
-
+    
         const products = await productsCollection
           .find({ subCategory: subCategory.name })
           .toArray();
-
-        // Fetch reviews for each product
-        const productsWithReviews = [];
-        for (const product of products) {
-          const reviewsQuery = { productId: product._id }; // Assuming you have a field named "productId" in your reviews
-          const reviews = await reviewsCollection.find(reviewsQuery).toArray();
-          product.reviews = reviews;
-          productsWithReviews.push(product);
-        }
-
+    
+        // Use aggregation pipeline to fetch reviews for the products
+        const productIds = products.map(product => product._id);
+    
+        const pipeline = [
+          {
+            $match: {
+              productId: { $in: productIds }
+            }
+          }
+        ];
+    
+        const reviews = await reviewsCollection.aggregate(pipeline).toArray();
+    
+        // Map the reviews to their respective products
+        const productsWithReviews = products.map(product => {
+          product.reviews = reviews.filter(review => review.productId.equals(product._id));
+          return product;
+        });
+    
         res.send({ subCategory: subCategory, products: productsWithReviews });
       } catch (error) {
+        console.error('Error fetching sub-category details:', error);
         res.status(500).send({ message: "Internal server error." });
       }
     });
+    
 
     app.post(
       "/upload-sub-category",
