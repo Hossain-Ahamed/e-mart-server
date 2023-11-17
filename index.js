@@ -88,16 +88,6 @@ async function run() {
     const productsCollection = client.db("e-mart").collection("products");
     const reviewsCollection = client.db("e-mart").collection("reviews");
     const bannersCollection = client.db("e-mart").collection("banners");
-    const menCategoryCollection = client.db("e-mart").collection("menCategory");
-    const womenCategoryCollection = client
-      .db("e-mart")
-      .collection("womenCategory");
-    const groceryCategoryCollection = client
-      .db("e-mart")
-      .collection("groceryCategory");
-    const beautyCategoryCollection = client
-      .db("e-mart")
-      .collection("beautyCategory");
     const wishListCollection = client.db("e-mart").collection("wishList");
     const cartCollection = client.db("e-mart").collection("carts");
     const paymentCollection = client.db("e-mart").collection("payments");
@@ -1574,34 +1564,6 @@ async function run() {
         }
       }
     );
-
-    app.get("/menCategory", async (req, res) => {
-      const query = {};
-      const cursor = menCategoryCollection.find(query);
-      const menCategory = await cursor.toArray();
-      res.send(menCategory);
-    });
-
-    app.get("/womenCategory", async (req, res) => {
-      const query = {};
-      const cursor = womenCategoryCollection.find(query);
-      const womenCategory = await cursor.toArray();
-      res.send(womenCategory);
-    });
-
-    app.get("/groceryCategory", async (req, res) => {
-      const query = {};
-      const cursor = groceryCategoryCollection.find(query);
-      const groceryCategory = await cursor.toArray();
-      res.send(groceryCategory);
-    });
-
-    app.get("/beautyCategory", async (req, res) => {
-      const query = {};
-      const cursor = beautyCategoryCollection.find(query);
-      const beautyCategory = await cursor.toArray();
-      res.send(beautyCategory);
-    });
 
     // app.get('/carts', async (req, res) => {
     //     const email = req.query.email;
