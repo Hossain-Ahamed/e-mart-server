@@ -263,6 +263,15 @@ async function run() {
 
     // ----------------------------------Upload Profile------------------------------
 
+    app.get(
+      "/get-profile", verifyJWT,
+      checkPermission(["admin"]), async (req, res) => {
+        const result = await profileCollection.find().toArray();
+        //console.log(result);
+        res.send(result);
+      }
+    );
+
     app.get("/get-profile/:email", verifyJWT, async (req, res) => {
       const email = req?.params?.email;
 
@@ -3406,6 +3415,10 @@ async function run() {
             orderStatus: 1,
             transactionId: 1,
             typeOfPayment: 1,
+            transaction_method_name: 1,
+            transaction_method_email: 1,
+            transaction_method_phone: 1,
+            payment_date: 1
           })
           .toArray();
         res.status(200).send({ allOrders: result });
