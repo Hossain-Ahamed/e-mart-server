@@ -19,6 +19,7 @@
     "mongodb": "^5.6.0",
     "nodemailer": "^6.9.5",
     "nodemailer-mailgun-transport": "^2.1.5",
-    "stripe": "^13.5.0"
+    "stripe": "^13.5.0",
+    "tesseract.js": "^2.1.1"
   }
 }

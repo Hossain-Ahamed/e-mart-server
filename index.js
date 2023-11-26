@@ -10,7 +10,7 @@ const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://192.168.0.106:5173"],
+  origin: ["http://localhost:5173", "http://192.168.0.106:5173", "https://e-mart-client.vercel.app"],
   credentials: true,
 };
 
@@ -86,6 +86,7 @@ async function run() {
     const categoryCollection = client.db("e-mart").collection("category");
     const subCategoryCollection = client.db("e-mart").collection("subCategory");
     const productsCollection = client.db("e-mart").collection("products");
+    const prescriptionCollection = client.db("e-mart").collection("prescription");
     const reviewsCollection = client.db("e-mart").collection("reviews");
     const bannersCollection = client.db("e-mart").collection("banners");
     const wishListCollection = client.db("e-mart").collection("wishList");
@@ -1746,12 +1747,15 @@ async function run() {
                 projection: {
                   productTitle: 1,
                   image: 1,
+                  size: 1,
                   mainPrice: 1,
                   price: 1,
                   quantity: 1,
                 },
               }
             );
+
+            console.log(product?.size, "size, 1758")
 
             // Determine the updated quantity
             const updatedQuantity =
@@ -1777,6 +1781,7 @@ async function run() {
               _id: product?._id,
               productTitle: product?.productTitle,
               image: product?.image,
+              size: product?.size,
               mainPrice: parseFloat(product?.mainPrice || 0),
               price: parseFloat(product?.price || 0),
               quantity: updatedQuantity,
@@ -1793,53 +1798,51 @@ async function run() {
     });
 
     // Add item to cart
-    app.post("/add-to-cart", verifyJWT, async (req, res) => {
-      const decodedEmail = req.data?.email;
-      // console.log(decodedEmail);
-      const { email, productId, quantity, checked } = req.body;
+app.post("/add-to-cart", verifyJWT, async (req, res) => {
+  const decodedEmail = req.data?.email;
 
-      if (decodedEmail !== email) {
-        res
-          .status(401)
-          .send({ message: "unauathorized access from this email" });
-      }
+  const { email, productId, quantity, checked, size } = req.body;
 
-      try {
-        let cart = await cartCollection.findOne({ email });
+  if (decodedEmail !== email) {
+    return res
+      .status(401)
+      .send({ message: "Unauthorized access from this email" });
+  }
 
-        if (!cart) {
-          cart = { email, cart: [] };
-        }
+  try {
+    let cart = await cartCollection.findOne({ email });
 
-        console.log(productId, "Productid");
-        console.log(cart, "cart-cart");
+    if (!cart) {
+      cart = { email, cart: [] };
+    }
 
-        const existingItemIndex = cart.cart.findIndex(
-          (item) => item.productId.toString() === productId
-        );
-        if (existingItemIndex !== -1) {
-          cart.cart[existingItemIndex].quantity += quantity;
-        } else {
-          cart.cart.push({ productId, quantity, checked });
-        }
+    const existingItemIndex = cart.cart.findIndex(
+      (item) => item.productId.toString() === productId && item.size === size
+    );
 
-        await cartCollection.updateOne(
-          { email },
-          { $set: cart },
-          { upsert: true }
-        );
+    if (existingItemIndex !== -1) {
+      // Update quantity if item with the same product ID and size already exists
+      cart.cart[existingItemIndex].quantity += quantity;
+    } else {
+      // Add a new item to the cart
+      cart.cart.push({ productId, quantity, checked, size });
+    }
 
-        // ...
-        // After updating the cart in the database
-        const updatedCart = cart.cart; // Assuming `cart.cart` contains the updated cart data
-        res.status(200).json({ cart: updatedCart });
+    await cartCollection.updateOne(
+      { email },
+      { $set: cart },
+      { upsert: true }
+    );
 
-        // res.status(201).json(cart);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "An error occurred" });
-      }
-    });
+    // After updating the cart in the database
+    const updatedCart = cart.cart;
+    res.status(200).json({ cart: updatedCart });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred" });
+  }
+});
+
 
     // Update cart product with new quantity and checked status
     app.put("/update-cart-product/:email", verifyJWT, async (req, res) => {
@@ -4320,6 +4323,22 @@ async function run() {
           .json({ error: "An error occurred while searching for products." });
       }
     });
+
+
+    //-------------------------------Upload Prescription--------------------------------
+
+    app.post(
+      "/upload-prescription",
+      verifyJWT,
+      async (req, res) => {
+        const uploadPrescription = req.body;
+        //console.log(uploadPrescription, "new");
+          const result = await prescriptionCollection.insertOne(uploadPrescription);
+          res.status(200).send(result);
+        }
+    );
+
+
   } finally {
   }
 }
