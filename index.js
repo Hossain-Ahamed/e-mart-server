@@ -122,12 +122,17 @@ async function run() {
       );
       console.log("JWT", token);
 
+      // res.cookie("_et", token, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: "none",
+      // }); // Sending the token as a cookie (secure and httponly)
+      // res.send({ token });
       res.cookie("_et", token, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-      }); // Sending the token as a cookie (secure and httponly)
-      res.send({ token });
+      }).send({ token });      
     });
 
     app.delete("/jwt", async (req, res) => {
