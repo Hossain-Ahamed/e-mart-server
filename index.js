@@ -16,9 +16,11 @@ const corsOptions = {
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", corsOptions.origin);
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
   res.header("Access-Control-Allow-Credentials", "true");
-  console.log('CORS headers set:', res.getHeaders());
   next();
 });
 
@@ -46,7 +48,7 @@ function checkPermission(allowedRoles) {
 
 const verifyJWT = (req, res, next) => {
   const token = req.cookies._et;
-  // console.log(req.query, token)
+  console.log(req.query, token, req.cookies)
   if (!token) {
     return res.status(401).json({ message: "Authorization header missing." });
   }
@@ -55,7 +57,7 @@ const verifyJWT = (req, res, next) => {
     if (err) {
       return res.status(403).json({ message: "Invalid token." });
     }
-    // console.log(decodedToken)
+    console.log(decodedToken)
     req.data = decodedToken; // Assuming the email is stored in the token's payload
     next();
   });
@@ -121,17 +123,18 @@ async function run() {
       );
       console.log("JWT", token);
 
-      // res.cookie("_et", token, {
-      //   httpOnly: true,
-      //   secure: true,
-      //   sameSite: "none",
-      // }); // Sending the token as a cookie (secure and httponly)
-      // res.send({ token });
       res.cookie("_et", token, {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-      }).send({ token });      
+      }); // Sending the token as a cookie (secure and httponly)
+      
+      res.send({ token });
+      // res.cookie("_et", token, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: "none",
+      // }).send({ token });      
     });
 
     // app.delete("/jwt", async (req, res) => {
