@@ -135,20 +135,35 @@ async function run() {
       }).send({ token });      
     });
 
+    // app.delete("/jwt", async (req, res) => {
+    //   try {
+    //     const _et = req.cookies._et;
+    //     // console.log(_et)
+
+    //     res.clearCookie("_et");
+    //     // console.log(3)
+    //     res.status(200).send(true);
+    //   } catch {
+    //     (e) => {
+    //       res.status(500).send({ message: "Internal server error" });
+    //     };
+    //   }
+    // });
+
     app.delete("/jwt", async (req, res) => {
       try {
         const _et = req.cookies._et;
-        // console.log(_et)
-
+    
+        // Perform any additional logic related to token validation or user logout
+    
         res.clearCookie("_et");
-        // console.log(3)
         res.status(200).send(true);
-      } catch {
-        (e) => {
-          res.status(500).send({ message: "Internal server error" });
-        };
+      } catch (error) {
+        console.error(error); // Log the error for debugging purposes
+        res.status(500).send({ message: "Internal server error" });
       }
     });
+    
 
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.data?.email;
