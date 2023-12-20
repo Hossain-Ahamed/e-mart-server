@@ -2902,7 +2902,61 @@ app.post("/add-to-cart", verifyJWT, async (req, res) => {
 
         let result = [];
         if (query) {
-          if (role === "Delivery Partner") {
+          if (role === "user") {
+            result = await ordersCollection
+              .find({
+                $and: [
+                  {
+                    $or: [
+                      { userPhone: { $regex: query, $options: "i" } },
+                      { "user.email": email },
+                    ],
+                  },
+                  {
+                    $or: [
+                      { status: { $eq: "Delivered" } },
+                    ],
+                  },
+                ],
+              })
+              .sort({ _id: -1 })
+              .skip(currentPage * size)
+              .limit(size)
+              .project({
+                _id: 1,
+                email: 1,
+                userId: 1,
+                userCity: 1,
+                userPhone: 1,
+                coupon: 1,
+                subTotalAmount: 1,
+                discountedAmount: 1,
+                courirerCharge: 1,
+                finalAmount: 1,
+                orderStatus: 1,
+                typeOfPayment: 1,
+                deliveryPartner: 1,
+                userAddress: 1,
+                status: 1,
+              })
+              .toArray();
+
+            count = await ordersCollection.countDocuments({
+              $and: [
+                {
+                  $or: [
+                    { userPhone: { $regex: query, $options: "i" } },
+                    { "user.email": email },
+                  ],
+                },
+                {
+                  $or: [
+                    { status: { $eq: "Delivered" } },
+                  ],
+                },
+              ],
+            });
+          } else if (role === "Delivery Partner") {
             result = await ordersCollection
               .find({
                 $and: [
@@ -2969,7 +3023,8 @@ app.post("/add-to-cart", verifyJWT, async (req, res) => {
                 },
               ],
             });
-          } else {
+          }
+           else {
             result = await ordersCollection
               .find({
                 $and: [
