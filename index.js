@@ -23,6 +23,7 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", "true");
   next();
 });
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
@@ -47,7 +48,7 @@ function checkPermission(allowedRoles) {
 
 const verifyJWT = (req, res, next) => {
   const token = req.cookies._et;
-  // console.log(req.query, token)
+  console.log(req.query, token, req.cookies)
   if (!token) {
     return res.status(401).json({ message: "Authorization header missing." });
   }
@@ -56,7 +57,7 @@ const verifyJWT = (req, res, next) => {
     if (err) {
       return res.status(403).json({ message: "Invalid token." });
     }
-    // console.log(decodedToken)
+    console.log(decodedToken)
     req.data = decodedToken; // Assuming the email is stored in the token's payload
     next();
   });
@@ -127,23 +128,44 @@ async function run() {
         secure: true,
         sameSite: "none",
       }); // Sending the token as a cookie (secure and httponly)
+      
       res.send({ token });
+      // res.cookie("_et", token, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: "none",
+      // }).send({ token });      
     });
+
+    // app.delete("/jwt", async (req, res) => {
+    //   try {
+    //     const _et = req.cookies._et;
+    //     // console.log(_et)
+
+    //     res.clearCookie("_et");
+    //     // console.log(3)
+    //     res.status(200).send(true);
+    //   } catch {
+    //     (e) => {
+    //       res.status(500).send({ message: "Internal server error" });
+    //     };
+    //   }
+    // });
 
     app.delete("/jwt", async (req, res) => {
       try {
         const _et = req.cookies._et;
-        // console.log(_et)
-
+    
+        // Perform any additional logic related to token validation or user logout
+    
         res.clearCookie("_et");
-        // console.log(3)
         res.status(200).send(true);
-      } catch {
-        (e) => {
-          res.status(500).send({ message: "Internal server error" });
-        };
+      } catch (error) {
+        console.error(error); // Log the error for debugging purposes
+        res.status(500).send({ message: "Internal server error" });
       }
     });
+    
 
     const verifyAdmin = async (req, res, next) => {
       const decodedEmail = req.data?.email;
@@ -2880,7 +2902,61 @@ app.post("/add-to-cart", verifyJWT, async (req, res) => {
 
         let result = [];
         if (query) {
-          if (role === "Delivery Partner") {
+          if (role === "user") {
+            result = await ordersCollection
+              .find({
+                $and: [
+                  {
+                    $or: [
+                      { userPhone: { $regex: query, $options: "i" } },
+                      { "user.email": email },
+                    ],
+                  },
+                  {
+                    $or: [
+                      { status: { $eq: "Delivered" } },
+                    ],
+                  },
+                ],
+              })
+              .sort({ _id: -1 })
+              .skip(currentPage * size)
+              .limit(size)
+              .project({
+                _id: 1,
+                email: 1,
+                userId: 1,
+                userCity: 1,
+                userPhone: 1,
+                coupon: 1,
+                subTotalAmount: 1,
+                discountedAmount: 1,
+                courirerCharge: 1,
+                finalAmount: 1,
+                orderStatus: 1,
+                typeOfPayment: 1,
+                deliveryPartner: 1,
+                userAddress: 1,
+                status: 1,
+              })
+              .toArray();
+
+            count = await ordersCollection.countDocuments({
+              $and: [
+                {
+                  $or: [
+                    { userPhone: { $regex: query, $options: "i" } },
+                    { "user.email": email },
+                  ],
+                },
+                {
+                  $or: [
+                    { status: { $eq: "Delivered" } },
+                  ],
+                },
+              ],
+            });
+          } else if (role === "Delivery Partner") {
             result = await ordersCollection
               .find({
                 $and: [
@@ -2947,7 +3023,8 @@ app.post("/add-to-cart", verifyJWT, async (req, res) => {
                 },
               ],
             });
-          } else {
+          }
+           else {
             result = await ordersCollection
               .find({
                 $and: [
